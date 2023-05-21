@@ -5,6 +5,7 @@ import sqlite3
 from result_overview import ResultOverview
 from database_helper import DatabaseHelper
 from tkinter import font as tkfont
+import math
 
 
 class RobustnessTestUI:
@@ -14,6 +15,8 @@ class RobustnessTestUI:
         self.window.title("Robustness Test Tool")
         self.run_tests_button = None  # Variable zum Verfolgen des "Run Tests" Buttons
 
+        self.graph_frames = []  # Liste zur Verfolgung der Frame-Widgets für die Graphen
+        
         self.results_listbox = tk.Listbox(self.window)
         self.results_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
@@ -21,8 +24,11 @@ class RobustnessTestUI:
         self.add_button = tk.Button(self.window, text="Add", command=self.add_container)
         self.add_button.pack(anchor=tk.NE, padx=10, pady=10)
 
-        self.result_overview = tk.Text(self.window, state=tk.DISABLED)
-        self.result_overview.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        self.result_overview_frame = tk.Frame(self.window)
+        self.result_overview_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.result_overview = tk.Text(self.result_overview_frame, height=1, state=tk.DISABLED)
+        self.result_overview.pack(fill=tk.X)
 
         self.database_helper = database_helper
         self.transformations_helper = transformations_helper
@@ -69,50 +75,66 @@ class RobustnessTestUI:
             messagebox.showerror("Error", message)
 
 
-
     def show_result_overview(self, event):
         selected_index = self.results_listbox.curselection()
         if selected_index:
             selected_item = self.results_listbox.get(selected_index)
+            self.result_overview.config(state=tk.NORMAL)
+            self.result_overview.delete(1.0, tk.END)  # Lösche den Text im Textfeld
 
-            # Überprüfen, ob bereits ein Textfeld für die Resultatübersicht angezeigt wird
-            result_overview_text = None
-            for widget in self.window.pack_slaves():
-                if isinstance(widget, tk.Text):
-                    result_overview_text = widget
-                    break
-
-            # Falls bereits ein Textfeld vorhanden ist, lösche den Inhalt und zeige den neuen Text an
-            if result_overview_text:
-                result_overview_text.config(state=tk.NORMAL)
-                result_overview_text.delete("1.0", tk.END)
-                result_overview_text.insert(tk.END, f"Results for Docker container: {selected_item}\n")
-                result_overview_text.config(state=tk.DISABLED)
-            else:
-                # Erstelle ein neues Textfeld für die Resultatübersicht
-                result_overview_text = tk.Text(self.window, state=tk.DISABLED)
-                result_overview_text.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
-                result_overview_text.insert(tk.END, f"Results for Docker container: {selected_item}\n")
-                result_overview_text.config(state=tk.DISABLED)
-
-
-            # Check if results are available for the selected Docker container
-            path=selected_item.split("#")[1]
-
-            #
-            #add Run Tests button
+            # Überprüfe, ob der "Run Tests" Button bereits vorhanden ist
             if not self.run_tests_button:
+                # Erzeuge den "Run Tests" Button, wenn er noch nicht vorhanden ist
                 self.run_tests_button = tk.Button(
                     self.window,
                     text="Run Tests",
-                    command=self.run_tests_for_container,
                     bg="green",
                     fg="white",
-                    font=tkfont.Font(weight="bold")
+                    font=("Arial", 14, "bold"),
+                    command=self.run_tests_for_container
                 )
                 self.run_tests_button.pack(side=tk.BOTTOM, pady=10)
+
+            # Überprüfe, ob Testergebnisse für den ausgewählten Container vorhanden sind
+            if self.database_helper.check_results_exist(selected_item):
+                # Ergebnisse vorhanden
+                result_score = self.database_helper.get_result_score(selected_item)
+                self.result_overview.insert(tk.END, f"Robustness Score: {result_score}")
+                self.showTransformationGraphs()
+            else:
+                # Keine Ergebnisse vorhanden
+                self.result_overview.insert(tk.END, "No Results for this container yet, run the tests.")
+            self.result_overview.config(state=tk.DISABLED)
+
+
+
+
         else:
             messagebox.showinfo("No Selection", "Please select a Docker container.")
+
+
+    def showTransformationGraphs(self):
+        # Lösche alle vorhandenen Graphen-Widgets
+        for graph_frame in self.graph_frames:
+            graph_frame.pack_forget()
+            graph_frame.destroy()
+        self.graph_frames = []
+
+        # Lade und zeige die Graphen für jede Zeile in der "transformations.txt"
+        transformations = self.transformations_helper.get_available_transformations()
+        num_columns = math.floor(self.window.winfo_width() / 200)  # Anzahl der Spalten basierend auf der Fensterbreite
+        num_rows = math.ceil(len(transformations) / num_columns)  # Anzahl der Zeilen basierend auf der Anzahl der Graphen
+
+        # Erzeuge und zeige die Graphen-Widgets
+        for i, transformation in enumerate(transformations):
+            graph_frame = tk.Frame(self.window, width=200, height=150, borderwidth=1, relief=tk.SOLID)
+            graph_frame.pack(side=tk.LEFT, padx=10, pady=10)
+            self.graph_frames.append(graph_frame)
+
+            # Hier kannst du den Code zum Erstellen und Anzeigen des Graphen einfügen
+            # Verwende graph_frame als Eltern-Widget für die Graphen-Elemente
+
+
                 
     def run_tests_for_container(self):
         selected_index = self.results_listbox.curselection()
@@ -120,7 +142,8 @@ class RobustnessTestUI:
             selected_item = self.results_listbox.get(selected_index)
             # Run tests for the selected Docker container
             # ...
-        
+
+            
     def run(self):
         self.window.mainloop()
         # Close the database connection when the UI is closed
