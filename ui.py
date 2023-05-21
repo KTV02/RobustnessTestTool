@@ -1,128 +1,126 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog
 import os
-import tarfile
-import datetime
 import sqlite3
+from result_overview import ResultOverview
+from database_helper import DatabaseHelper
+from tkinter import font as tkfont
 
 
 class RobustnessTestUI:
-    def __init__(self):
+    def __init__(self, database_helper,transformations_helper, files_helper):
+
         self.window = tk.Tk()
         self.window.title("Robustness Test Tool")
-
-        self.images_folder = "images"  # Pfad zum Ordner für die entpackten Docker-Images
-        self.create_images_folder()  # Erstelle den Ordner, falls er noch nicht existiert
+        self.run_tests_button = None  # Variable zum Verfolgen des "Run Tests" Buttons
 
         self.results_listbox = tk.Listbox(self.window)
-        self.results_listbox.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.results_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
-        
-        self.result_overview = tk.Text(self.window, state=tk.DISABLED)
-        self.result_overview.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        self.add_button = tk.Button(self.window, text="Add", command=self.add_algorithm)
+
+        self.add_button = tk.Button(self.window, text="Add", command=self.add_container)
         self.add_button.pack(anchor=tk.NE, padx=10, pady=10)
 
-        
-        self.database_file = "docker_containers.db"  # Dateiname der SQLite-Datenbank
-        self.create_database()  # Erstelle die Datenbank, falls sie noch nicht existiert
+        self.result_overview = tk.Text(self.window, state=tk.DISABLED)
+        self.result_overview.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
+        self.database_helper = database_helper
+        self.transformations_helper = transformations_helper
+        self.files_helper = files_helper
         self.load_docker_containers()
 
+        # Set minimum size for the window
+        self.window.update()
+        self.window.minsize(self.window.winfo_width(), self.window.winfo_height())
 
-    def create_images_folder(self):
-        if not os.path.exists(self.images_folder):
-            os.makedirs(self.images_folder)
+        self.window.mainloop()
 
-    def create_database(self):
-        conn = sqlite3.connect(self.database_file)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS docker_containers
-                     (name TEXT, path TEXT, date_added TEXT, size INTEGER)''')
-        conn.commit()
-        conn.close()
+
+
 
     def load_docker_containers(self):
-        conn = sqlite3.connect(self.database_file)
-        c = conn.cursor()
-        c.execute("SELECT name FROM docker_containers")
-        results = c.fetchall()
-        conn.close()
-
+        results = self.database_helper.load_docker_containers()
         self.results_listbox.delete(0, tk.END)
         for result in results:
-            self.results_listbox.insert(tk.END, result[0])
+            name = result[0]
+            path = result[1]
+            item_text = f"{name}#{path}"  # Kombinieren von Name und Pfad
+            self.results_listbox.insert(tk.END, item_text)
 
-    def add_algorithm(self):
+
+    def add_container(self):
+        #get path to docker container
         file_path = filedialog.askopenfilename(filetypes=[("Tar Archive", "*.tar")])
-        if file_path:
-            if self.is_tar_file(file_path):
-                self.extract_docker_image(file_path)
-                self.save_docker_container(file_path)
+
+        # Prompt for container name
+        name = simpledialog.askstring("Container Name", "Enter the name for the Docker container:")
+
+        #store docker container
+        success, message, extract_path, size = self.files_helper.store_docker(file_path)
+        #if store worked -> create database 
+        if success:
+            success, message = self.database_helper.save_docker_container(extract_path, name, size)
+            if success:
+                messagebox.showinfo("Success", message)
                 self.load_docker_containers()
             else:
-                messagebox.showerror("Error", "The selected file is not a valid .tar file.")
-
-    def is_tar_file(self, file_path):
-        return tarfile.is_tarfile(file_path)
-
-    def extract_docker_image(self, file_path):
-        unique_name = self.generate_unique_name()
-        extract_path = os.path.join(self.images_folder, unique_name)
-
-        try:
-            with tarfile.open(file_path, "r") as tar:
-                tar.extractall(extract_path)
-            messagebox.showinfo("Success", f"Docker image extracted to: {extract_path}")
-        except tarfile.TarError as e:
-            messagebox.showerror("Error", f"Failed to extract Docker image: {str(e)}")
-
-    def generate_unique_name(self):
-        i = 1
-        while True:
-            unique_name = f"image{i}"
-            extract_path = os.path.join(self.images_folder, unique_name)
-            if not os.path.exists(extract_path):
-                return unique_name
-            i += 1
+                messagebox.showerror("Error", message)
+        else:
+            messagebox.showerror("Error", message)
 
 
-    def save_docker_container(self, file_path):
-        unique_name = self.generate_unique_name()
-        extract_path = os.path.join(self.images_folder, unique_name)
-
-        # Daten für die Datenbank
-        name = os.path.splitext(os.path.basename(file_path))[0]
-        date_added = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        size = os.path.getsize(file_path)
-
-        try:
-            with tarfile.open(file_path, "r") as tar:
-                tar.extractall(extract_path)
-
-            # Daten in die SQLite-Datenbank speichern
-            conn = sqlite3.connect(self.database_file)
-            c = conn.cursor()
-            c.execute("INSERT INTO docker_containers VALUES (?, ?, ?, ?)",
-                      (name, extract_path, date_added, size))
-            conn.commit()
-            conn.close()
-
-            messagebox.showinfo("Success", f"Docker container '{name}' saved.")
-        except tarfile.TarError as e:
-            messagebox.showerror("Error", f"Failed to save Docker container: {str(e)}")
 
     def show_result_overview(self, event):
-        selected_item = self.results_listbox.get(self.results_listbox.curselection())
-        self.result_overview.config(state=tk.NORMAL)
-        self.result_overview.delete("1.0", tk.END)
-        self.result_overview.insert(tk.END, f"Selected Docker Container: {selected_item}\n")
-        self.result_overview.insert(tk.END, "Current Result:\n")
-        self.result_overview.insert(tk.END, "Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n")
-        self.result_overview.config(state=tk.DISABLED)
+        selected_index = self.results_listbox.curselection()
+        if selected_index:
+            selected_item = self.results_listbox.get(selected_index)
 
-            
+            # Überprüfen, ob bereits ein Textfeld für die Resultatübersicht angezeigt wird
+            result_overview_text = None
+            for widget in self.window.pack_slaves():
+                if isinstance(widget, tk.Text):
+                    result_overview_text = widget
+                    break
+
+            # Falls bereits ein Textfeld vorhanden ist, lösche den Inhalt und zeige den neuen Text an
+            if result_overview_text:
+                result_overview_text.config(state=tk.NORMAL)
+                result_overview_text.delete("1.0", tk.END)
+                result_overview_text.insert(tk.END, f"Results for Docker container: {selected_item}\n")
+                result_overview_text.config(state=tk.DISABLED)
+            else:
+                # Erstelle ein neues Textfeld für die Resultatübersicht
+                result_overview_text = tk.Text(self.window, state=tk.DISABLED)
+                result_overview_text.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+                result_overview_text.insert(tk.END, f"Results for Docker container: {selected_item}\n")
+                result_overview_text.config(state=tk.DISABLED)
+
+
+            # Check if results are available for the selected Docker container
+            path=selected_item.split("#")[1]
+
+            #
+            #add Run Tests button
+            if not self.run_tests_button:
+                self.run_tests_button = tk.Button(
+                    self.window,
+                    text="Run Tests",
+                    command=self.run_tests_for_container,
+                    bg="green",
+                    fg="white",
+                    font=tkfont.Font(weight="bold")
+                )
+                self.run_tests_button.pack(side=tk.BOTTOM, pady=10)
+        else:
+            messagebox.showinfo("No Selection", "Please select a Docker container.")
+                
+    def run_tests_for_container(self):
+        selected_index = self.results_listbox.curselection()
+        if selected_index:
+            selected_item = self.results_listbox.get(selected_index)
+            # Run tests for the selected Docker container
+            # ...
+        
     def run(self):
         self.window.mainloop()
         # Close the database connection when the UI is closed

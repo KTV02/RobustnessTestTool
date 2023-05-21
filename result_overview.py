@@ -1,50 +1,34 @@
 import tkinter as tk
+import sqlite3
 
-class ResultOverview(tk.Frame):
-    def __init__(self, parent, width):
-        super().__init__(parent, width=int(parent.winfo_screenwidth() * width))
-        self.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        self.label = tk.Label(self, text="Result Overview")
-        self.label.pack(padx=10, pady=10)
-        
-        # Graph canvas for displaying transformation results
-        self.canvas = tk.Canvas(self)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        
-    def display_result(self, robustness_score, transformations_data):
-        # Clear the canvas
-        self.canvas.delete("all")
-        
-        # Display the robustness score
-        score_label = tk.Label(self.canvas, text=f"Robustness Score: {robustness_score}")
-        score_label.pack(padx=10, pady=10)
-        
-        # Display the graphs for each transformation
-        for transformation in transformations_data:
-            name = transformation["name"]
-            values = transformation["values"]
-            
-            # Create a graph for each transformation
-            graph_label = tk.Label(self.canvas, text=name)
-            graph_label.pack(padx=10, pady=10)
-            
-            # Plot the values on the graph
-            graph = tk.Canvas(self.canvas, width=400, height=300)
-            graph.pack()
-            
-            x_scale = 400 / len(values)
-            y_scale = 300
-            
-            for i in range(len(values)):
-                x1 = i * x_scale
-                y1 = y_scale * (1 - values[i][1])
-                x2 = (i + 1) * x_scale
-                y2 = y_scale
-                
-                graph.create_rectangle(x1, y1, x2, y2, fill="blue")
-                
-                # Add text labels for values
-                graph.create_text((x1 + x2) / 2, y1 - 10, text=f"{values[i][1]:.2f}")
-                
-        self.canvas.update()
+class ResultOverview:
+    def __init__(self, result_overview_text):
+        self.result_overview_text = result_overview_text
+
+    def show_result_overview(self, selected_item):
+        db_connection = sqlite3.connect('results.db')
+        db_cursor = db_connection.cursor()
+        db_cursor.execute("SELECT * FROM results WHERE Dockerpath=?", (selected_item,))
+        result = db_cursor.fetchone()
+        db_connection.close()
+
+        if result is not None:
+            self.result_overview_text.config(state=tk.NORMAL)
+            self.result_overview_text.delete("1.0", tk.END)
+
+            # Zeige alle Ergebnisse an
+            self.result_overview_text.insert(tk.END, f"Docker Container: {selected_item}\n\n")
+            self.result_overview_text.insert(tk.END, "Robustness Score: {}\n".format(result[1]))
+            self.result_overview_text.insert(tk.END, "Date: {}\n".format(result[2]))
+            self.result_overview_text.insert(tk.END, "\nTransformation Results:\n")
+
+            # Für jede Transformation den Graphen anzeigen
+            for i in range(3, len(result)):
+                self.result_overview_text.insert(tk.END, "Transformation {}: {}\n".format(i-2, result[i]))
+
+            self.result_overview_text.config(state=tk.DISABLED)
+        else:
+            self.result_overview_text.config(state=tk.NORMAL)
+            self.result_overview_text.delete("1.0", tk.END)
+            self.result_overview_text.insert(tk.END, "No results available for this Docker container.")
+            self.result_overview_text.config(state=tk.DISABLED)
