@@ -9,24 +9,30 @@ import math
 
 
 class RobustnessTestUI:
-    def __init__(self, database_helper,transformations_helper, files_helper):
-
+    def __init__(self, database_helper, transformations_helper, files_helper):
         self.window = tk.Tk()
         self.window.title("Robustness Test Tool")
-        self.run_tests_button = None  # Variable zum Verfolgen des "Run Tests" Buttons
 
+        self.run_tests_button = None  # Variable zum Verfolgen des "Run Tests" Buttons
         self.graph_frames = []  # Liste zur Verfolgung der Frame-Widgets für die Graphen
-        
+
+         # Grid-Layout für das Hauptfenster
+        self.window.grid_rowconfigure(0, weight=1)
+        self.window.grid_columnconfigure(0, weight=1)
+        self.window.grid_columnconfigure(1, weight=4)
+
         self.results_listbox = tk.Listbox(self.window)
-        self.results_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
+        self.results_listbox.grid(row=0, column=0, sticky="nsew")
+        self.results_listbox.grid_rowconfigure(0, weight=1)
 
         self.add_button = tk.Button(self.window, text="Add", command=self.add_container)
-        self.add_button.pack(anchor=tk.NE, padx=10, pady=10)
-
-        self.result_overview_frame = tk.Frame(self.window)
-        self.result_overview_frame.pack(side=tk.RIGHT, fill=tk.Y)
+        self.add_button.grid(row=0, column=1, sticky="ne", padx=10, pady=10)
         
+        self.result_overview_frame = tk.Frame(self.window)
+        self.result_overview_frame.grid(row=0, column=2, sticky="nsew")
+        self.result_overview_frame.grid_columnconfigure(0, weight=1)
+        self.result_overview_frame.grid_rowconfigure(0, weight=1)
+
         self.result_overview = tk.Text(self.result_overview_frame, height=1, state=tk.DISABLED)
         self.result_overview.pack(fill=tk.X)
 
@@ -41,9 +47,6 @@ class RobustnessTestUI:
 
         self.window.mainloop()
 
-
-
-
     def load_docker_containers(self):
         results = self.database_helper.load_docker_containers()
         self.results_listbox.delete(0, tk.END)
@@ -53,17 +56,16 @@ class RobustnessTestUI:
             item_text = f"{name}#{path}"  # Kombinieren von Name und Pfad
             self.results_listbox.insert(tk.END, item_text)
 
-
     def add_container(self):
-        #get path to docker container
+        # get path to docker container
         file_path = filedialog.askopenfilename(filetypes=[("Tar Archive", "*.tar")])
 
         # Prompt for container name
         name = simpledialog.askstring("Container Name", "Enter the name for the Docker container:")
 
-        #store docker container
+        # store docker container
         success, message, extract_path, size = self.files_helper.store_docker(file_path)
-        #if store worked -> create database 
+        # if store worked -> create database
         if success:
             success, message = self.database_helper.save_docker_container(extract_path, name, size)
             if success:
@@ -73,7 +75,6 @@ class RobustnessTestUI:
                 messagebox.showerror("Error", message)
         else:
             messagebox.showerror("Error", message)
-
 
     def show_result_overview(self, event):
         selected_index = self.results_listbox.curselection()
@@ -93,30 +94,31 @@ class RobustnessTestUI:
                     font=("Arial", 14, "bold"),
                     command=self.run_tests_for_container
                 )
-                self.run_tests_button.pack(side=tk.BOTTOM, pady=10)
+                self.run_tests_button.grid(row=1, column=1, sticky="se", padx=10, pady=10)
 
             # Überprüfe, ob Testergebnisse für den ausgewählten Container vorhanden sind
-            if self.database_helper.check_results_exist(selected_item):
+            path = selected_item.split("#")[1]
+            if self.database_helper.check_results_exist(path):
                 # Ergebnisse vorhanden
-                result_score = self.database_helper.get_result_score(selected_item)
+                result_score = self.database_helper.get_result_score(path)
+                self.result_overview.config(state=tk.NORMAL)
+                self.result_overview.delete(1.0, tk.END)
                 self.result_overview.insert(tk.END, f"Robustness Score: {result_score}")
+                self.result_overview.config(state=tk.DISABLED)
                 self.showTransformationGraphs()
             else:
                 # Keine Ergebnisse vorhanden
+                self.result_overview.config(state=tk.NORMAL)
+                self.result_overview.delete(1.0, tk.END)
                 self.result_overview.insert(tk.END, "No Results for this container yet, run the tests.")
-            self.result_overview.config(state=tk.DISABLED)
-
-
-
-
+                self.result_overview.config(state=tk.DISABLED)
         else:
             messagebox.showinfo("No Selection", "Please select a Docker container.")
-
 
     def showTransformationGraphs(self):
         # Lösche alle vorhandenen Graphen-Widgets
         for graph_frame in self.graph_frames:
-            graph_frame.pack_forget()
+            graph_frame.grid_forget()
             graph_frame.destroy()
         self.graph_frames = []
 
@@ -128,14 +130,12 @@ class RobustnessTestUI:
         # Erzeuge und zeige die Graphen-Widgets
         for i, transformation in enumerate(transformations):
             graph_frame = tk.Frame(self.window, width=200, height=150, borderwidth=1, relief=tk.SOLID)
-            graph_frame.pack(side=tk.LEFT, padx=10, pady=10)
+            graph_frame.grid(row=(i // num_columns) + 2, column=i % num_columns, padx=10, pady=10)
             self.graph_frames.append(graph_frame)
 
             # Hier kannst du den Code zum Erstellen und Anzeigen des Graphen einfügen
             # Verwende graph_frame als Eltern-Widget für die Graphen-Elemente
 
-
-                
     def run_tests_for_container(self):
         selected_index = self.results_listbox.curselection()
         if selected_index:
@@ -143,11 +143,12 @@ class RobustnessTestUI:
             # Run tests for the selected Docker container
             # ...
 
-            
     def run(self):
         self.window.mainloop()
         # Close the database connection when the UI is closed
         self.db_connection.close()
+
+
 
 
 class ToolTip:
@@ -176,8 +177,3 @@ class ToolTip:
             self.tooltip_window = None
 
 
-
-    
-if __name__ == "__main__":
-    ui = RobustnessTestUI()
-    ui.run()
