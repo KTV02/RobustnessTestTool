@@ -53,7 +53,7 @@ class DatabaseHelper:
             c = conn.cursor()
 
             transformations = self.read_transformations(transformations_file)
-            columns = ["Dockerpath", "Date"] + [f"{transformation}result" for transformation in transformations]
+            columns = ["dockerpath", "date","score"] + [f"{transformation}result" for transformation in transformations]
             column_definitions = ", ".join(f"{column} TEXT" for column in columns)
 
             create_table_query = f"CREATE TABLE results ({column_definitions})"
@@ -87,8 +87,19 @@ class DatabaseHelper:
         c.execute("SELECT * FROM results WHERE Dockerpath=?", (path,))
         print("Dockerpath= "+path)
         result = c.fetchone()
+        with open("debug.txt", "w") as file:
+            file.write(str(path))
         conn.close()
         return result is not None
+
+    def get_result_score(self, path):
+        conn = sqlite3.connect(self.database_file)
+        c = conn.cursor()
+        c.execute("SELECT score FROM results WHERE Dockerpath=?", (path,))
+        result=c.fetchone()
+        conn.close()
+        return result
+        
 
     def database_exists(self):
         return os.path.exists(self.database_file)
