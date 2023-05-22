@@ -83,6 +83,11 @@ class RobustnessTestUI:
             graph_frame.destroy()
         self.graph_frames = []
 
+         # Entferne alle Labels
+        for label in self.window.grid_slaves(row=2):
+            label.grid_forget()
+            label.destroy()
+
 
     def load_docker_containers(self):
         results = self.database_helper.load_docker_containers()
@@ -165,14 +170,24 @@ class RobustnessTestUI:
         num_columns = math.floor(self.window.winfo_width() / 200)  # Anzahl der Spalten basierend auf der Fensterbreite
         num_rows = math.ceil(len(transformations) / num_columns)  # Anzahl der Zeilen basierend auf der Anzahl der Graphen
 
-        # Erzeuge und zeige die Graphen-Widgets
+        # Read the transformation names from the transformations.txt file
+        with open('transformations.txt', 'r') as file:
+            transformation_names = file.readlines()
+
+        # Erzeuge und zeige die Graphen-Widgets mit Beschriftungen
         for i, transformation in enumerate(transformations):
             graph_frame = tk.Frame(self.window, width=200, height=150, borderwidth=1, relief=tk.SOLID)
-            graph_frame.grid(row=(i // num_columns) + 2, column=i % num_columns, padx=10, pady=10)
+            graph_frame.grid(row=(i // num_columns) + 3, column=i % num_columns, padx=10, pady=10)
             self.graph_frames.append(graph_frame)
+
+            # Label the box with the transformation name
+            transformation_name = transformation_names[i].strip()  # Get the transformation name for the current box
+            label = tk.Label(self.window, text=transformation_name)
+            label.grid(row=(i // num_columns) + 2, column=i % num_columns, padx=10, pady=5)
 
             # Hier kannst du den Code zum Erstellen und Anzeigen des Graphen einfügen
             # Verwende graph_frame als Eltern-Widget für die Graphen-Elemente
+
 
     def run_tests_for_container(self):
         selected_index = self.results_listbox.curselection()
