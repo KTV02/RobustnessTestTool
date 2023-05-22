@@ -11,31 +11,43 @@ import math
 class RobustnessTestUI:
     def __init__(self, database_helper, transformations_helper, files_helper):
         self.window = tk.Tk()
+        self.window.geometry("800x600")  # Set the initial size to 800x600 pixels
         self.window.title("Robustness Test Tool")
 
         self.run_tests_button = None  # Variable zum Verfolgen des "Run Tests" Buttons
         self.graph_frames = []  # Liste zur Verfolgung der Frame-Widgets für die Graphen
 
-         # Grid-Layout für das Hauptfenster
+        # Grid-Layout für das Hauptfenster
         self.window.grid_rowconfigure(0, weight=1)
         self.window.grid_columnconfigure(0, weight=1)
         self.window.grid_columnconfigure(1, weight=4)
 
-        self.results_listbox = tk.Listbox(self.window)
+        # Linkes Frame für die Docker-Liste
+        self.docker_list_frame = tk.Frame(self.window)
+        self.docker_list_frame.grid(row=0, column=0, sticky="nsew")
+        self.docker_list_frame.grid_rowconfigure(0, weight=1)
+        self.docker_list_frame.grid_columnconfigure(0, weight=1)
+
+        self.results_listbox = tk.Listbox(self.docker_list_frame)
         self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
         self.results_listbox.grid(row=0, column=0, sticky="nsew")
-        self.results_listbox.grid_rowconfigure(0, weight=1)
 
-        self.add_button = tk.Button(self.window, text="Add", command=self.add_container)
-        self.add_button.grid(row=0, column=1, sticky="ne", padx=10, pady=10)
+        self.add_button = tk.Button(self.docker_list_frame, text="Add", command=self.add_container)
+        self.add_button.grid(row=1, column=0, sticky="se", padx=10, pady=10)
+
+        self.result_transform_frame = tk.Frame(self.window)
+        self.result_transform_frame.grid(row=0, column=1, sticky="nsew")
+        self.result_transform_frame.grid_rowconfigure(0, weight=1)
+        self.result_transform_frame.grid_columnconfigure(0, weight=1)
+
+        self.result_overview = tk.Text(self.result_transform_frame, height=1, state=tk.DISABLED, takefocus=False)
+        self.result_overview.grid(row=0, column=0, sticky="new")
         
-        self.result_overview_frame = tk.Frame(self.window)
-        self.result_overview_frame.grid(row=0, column=2, sticky="nsew")
-        self.result_overview_frame.grid_columnconfigure(0, weight=1)
-        self.result_overview_frame.grid_rowconfigure(0, weight=1)
 
-        self.result_overview = tk.Text(self.result_overview_frame, height=1, state=tk.DISABLED)
-        self.result_overview.pack(fill=tk.X)
+        self.transformations_frame = tk.Frame(self.result_transform_frame)
+        self.transformations_frame.grid(row=1, column=0, sticky="nsew")
+        self.transformations_frame.grid_rowconfigure(0, weight=1)
+        self.transformations_frame.grid_columnconfigure(0, weight=1)
 
         self.database_helper = database_helper
         self.transformations_helper = transformations_helper
@@ -47,6 +59,30 @@ class RobustnessTestUI:
         self.window.minsize(self.window.winfo_width(), self.window.winfo_height())
 
         self.window.mainloop()
+
+
+    def reset_right_panel(self):
+        # Lösche alle vorhandenen Elemente im rechten Panel
+        for child in self.transformations_frame.winfo_children():
+            child.destroy()
+
+        # Überprüfe, ob das result_overview-Textfeld noch existiert
+        if hasattr(self, 'result_overview'):
+            # Setze das result_overview-Textfeld zurück, falls vorhanden
+            self.result_overview.config(state=tk.NORMAL)
+            self.result_overview.delete(1.0, tk.END)
+            self.result_overview.config(state=tk.DISABLED)
+
+        # Entferne den "Run Tests" Button, falls vorhanden
+        if self.run_tests_button:
+            self.run_tests_button.destroy()
+            self.run_tests_button = None
+
+        # Entferne alle Graphen-Widgets
+        for graph_frame in self.graph_frames:
+            graph_frame.destroy()
+        self.graph_frames = []
+
 
     def load_docker_containers(self):
         results = self.database_helper.load_docker_containers()
@@ -81,6 +117,7 @@ class RobustnessTestUI:
         selected_index = self.results_listbox.curselection()
         if selected_index:
             selected_item = self.results_listbox.get(selected_index)
+            self.reset_right_panel()
             self.result_overview.config(state=tk.NORMAL)
             self.result_overview.delete(1.0, tk.END)  # Lösche den Text im Textfeld
 
