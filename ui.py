@@ -22,6 +22,7 @@ class RobustnessTestUI:
         self.window.grid_columnconfigure(1, weight=4)
 
         self.results_listbox = tk.Listbox(self.window)
+        self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
         self.results_listbox.grid(row=0, column=0, sticky="nsew")
         self.results_listbox.grid_rowconfigure(0, weight=1)
 

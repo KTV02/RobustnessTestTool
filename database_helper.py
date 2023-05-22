@@ -90,6 +90,7 @@ class DatabaseHelper:
         with open("debug.txt", "w") as file:
             file.write(str(path))
         conn.close()
+        print(result)
         return result is not None
 
     def get_result_score(self, path):
