@@ -20,13 +20,14 @@ class RobustnessTestUI:
         # Grid-Layout für das Hauptfenster
         self.window.grid_rowconfigure(0, weight=1)
         self.window.grid_columnconfigure(0, weight=1)
-        self.window.grid_columnconfigure(1, weight=4)
+
+        # PanedWindow für linke und rechte Seite
+        self.paned_window = tk.PanedWindow(self.window, orient=tk.HORIZONTAL)
+        self.paned_window.grid(row=0, column=0, sticky="nsew")
 
         # Linkes Frame für die Docker-Liste
-        self.docker_list_frame = tk.Frame(self.window)
-        self.docker_list_frame.grid(row=0, column=0, sticky="nsew")
-        self.docker_list_frame.grid_rowconfigure(0, weight=1)
-        self.docker_list_frame.grid_columnconfigure(0, weight=1)
+        self.docker_list_frame = tk.Frame(self.paned_window, width=160)
+        self.paned_window.add(self.docker_list_frame)
 
         self.results_listbox = tk.Listbox(self.docker_list_frame)
         self.results_listbox.bind("<<ListboxSelect>>", self.show_result_overview)
@@ -34,20 +35,16 @@ class RobustnessTestUI:
 
         self.add_button = tk.Button(self.docker_list_frame, text="Add", command=self.add_container)
         self.add_button.grid(row=1, column=0, sticky="se", padx=10, pady=10)
-
-        self.result_transform_frame = tk.Frame(self.window)
-        self.result_transform_frame.grid(row=0, column=1, sticky="nsew")
-        self.result_transform_frame.grid_rowconfigure(0, weight=1)
-        self.result_transform_frame.grid_columnconfigure(0, weight=1)
+        
+        # Rechtes Frame für die Ergebnisübersicht und Transformationen
+        self.result_transform_frame = tk.Frame(self.paned_window)
+        self.paned_window.add(self.result_transform_frame)
 
         self.result_overview = tk.Text(self.result_transform_frame, height=1, state=tk.DISABLED, takefocus=False)
         self.result_overview.grid(row=0, column=0, sticky="new")
-        
 
         self.transformations_frame = tk.Frame(self.result_transform_frame)
         self.transformations_frame.grid(row=1, column=0, sticky="nsew")
-        self.transformations_frame.grid_rowconfigure(0, weight=1)
-        self.transformations_frame.grid_columnconfigure(0, weight=1)
 
         self.database_helper = database_helper
         self.transformations_helper = transformations_helper
