@@ -3,6 +3,7 @@ from database_helper import DatabaseHelper
 from ui import RobustnessTestUI
 from transformations_helper import TransformationsHelper
 from files_helper import FilesHelper
+from controller import Controller
 
 # Define the paths and filenames
 database_file = "results.db"
@@ -13,13 +14,17 @@ database_helper = DatabaseHelper(database_file)
 transformations_helper = TransformationsHelper(transformations_file)
 files_helper = FilesHelper()
 
-
+#SETUP
 # Check if the database exists and is correct
 database_helper.create_results_database(transformations_file)
 database_helper.create_container_database()
 
-# Create an instance of RobustnessTestUI
-ui = RobustnessTestUI(database_helper,transformations_helper, files_helper)
+
+# Create an instance of the controller
+controller = Controller(database_helper, transformations_helper, files_helper)
+
+# Create an instance of RobustnessTestUI and pass the controller
+ui = RobustnessTestUI(controller)
 
 # Start the UI
 ui.run()

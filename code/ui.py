@@ -3,13 +3,13 @@ from tkinter import filedialog, messagebox, simpledialog
 import os
 import sqlite3
 from result_overview import ResultOverview
-from database_helper import DatabaseHelper
 from tkinter import font as tkfont
 import math
 
 
 class RobustnessTestUI:
-    def __init__(self, database_helper, transformations_helper, files_helper):
+    def __init__(self, controller):
+        self.controller=controller
         self.window = tk.Tk()
         self.window.geometry("800x600")  # Set the initial size to 800x600 pixels
         self.window.title("Robustness Test Tool")
@@ -46,9 +46,6 @@ class RobustnessTestUI:
         self.transformations_frame = tk.Frame(self.result_transform_frame)
         self.transformations_frame.grid(row=1, column=0, sticky="nsew")
 
-        self.database_helper = database_helper
-        self.transformations_helper = transformations_helper
-        self.files_helper = files_helper
         self.load_docker_containers()
 
         # Set minimum size for the window
@@ -87,13 +84,16 @@ class RobustnessTestUI:
 
 
     def load_docker_containers(self):
-        results = self.database_helper.load_docker_containers()
+        #clear container list
         self.results_listbox.delete(0, tk.END)
-        for result in results:
-            name = result[0]
-            path = result[1]
+        #get all container names
+        containers=self.controller.load_docker_containers()
+        for c in containers:
+            name = c[0]
+            path = c[1]
             item_text = f"{name}#{path}"  # Kombinieren von Name und Pfad
             self.results_listbox.insert(tk.END, item_text)
+
 
     def add_container(self):
         # get path to docker container
@@ -102,16 +102,11 @@ class RobustnessTestUI:
         # Prompt for container name
         name = simpledialog.askstring("Container Name", "Enter the name for the Docker container:")
 
-        # store docker container
-        success, message, extract_path, size = self.files_helper.store_docker(file_path)
-        # if store worked -> create database
+        success,message = self.controller.store_container(file_path,name)
+
         if success:
-            success, message = self.database_helper.save_docker_container(extract_path, name, size)
-            if success:
-                messagebox.showinfo("Success", message)
-                self.load_docker_containers()
-            else:
-                messagebox.showerror("Error", message)
+            messagebox.showinfo("Success", message)
+            self.load_docker_containers()
         else:
             messagebox.showerror("Error", message)
 
@@ -138,9 +133,10 @@ class RobustnessTestUI:
 
             # Überprüfe, ob Testergebnisse für den ausgewählten Container vorhanden sind
             path = selected_item.split("#")[1]
-            if self.database_helper.check_results_exist(path):
+            
+            if self.controller.results_available(path):
                 # Ergebnisse vorhanden
-                result_score = self.database_helper.get_result_score(path)
+                result_score = self.controller.get_result_score(path)
                 self.result_overview.config(state=tk.NORMAL)
                 self.result_overview.delete(1.0, tk.END)
                 self.result_overview.insert(tk.END, f"Robustness Score: {result_score}")
@@ -156,34 +152,7 @@ class RobustnessTestUI:
             messagebox.showinfo("No Selection", "Please select a Docker container.")
 
     def showTransformationGraphs(self):
-        # Lösche alle vorhandenen Graphen-Widgets
-        for graph_frame in self.graph_frames:
-            graph_frame.grid_forget()
-            graph_frame.destroy()
-        self.graph_frames = []
-
-        # Lade und zeige die Graphen für jede Zeile in der "transformations.txt"
-        transformations = self.transformations_helper.get_available_transformations()
-        num_columns = math.floor(self.window.winfo_width() / 200)  # Anzahl der Spalten basierend auf der Fensterbreite
-        num_rows = math.ceil(len(transformations) / num_columns)  # Anzahl der Zeilen basierend auf der Anzahl der Graphen
-
-        # Read the transformation names from the transformations.txt file
-        with open('transformations.txt', 'r') as file:
-            transformation_names = file.readlines()
-
-        # Erzeuge und zeige die Graphen-Widgets mit Beschriftungen
-        for i, transformation in enumerate(transformations):
-            graph_frame = tk.Frame(self.window, width=200, height=150, borderwidth=1, relief=tk.SOLID)
-            graph_frame.grid(row=(i // num_columns) + 3, column=i % num_columns, padx=10, pady=10)
-            self.graph_frames.append(graph_frame)
-
-            # Label the box with the transformation name
-            transformation_name = transformation_names[i].strip()  # Get the transformation name for the current box
-            label = tk.Label(self.window, text=transformation_name)
-            label.grid(row=(i // num_columns) + 2, column=i % num_columns, padx=10, pady=5)
-
-            # Hier kannst du den Code zum Erstellen und Anzeigen des Graphen einfügen
-            # Verwende graph_frame als Eltern-Widget für die Graphen-Elemente
+        pass
 
 
     def run_tests_for_container(self):
@@ -192,11 +161,12 @@ class RobustnessTestUI:
             selected_item = self.results_listbox.get(selected_index)
             # Run tests for the selected Docker container
             # ...
+            self.controller.run_tests_for_container()
 
     def run(self):
         self.window.mainloop()
         # Close the database connection when the UI is closed
-        self.db_connection.close()
+        self.controller.exit()
 
 
 
