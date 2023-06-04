@@ -2,7 +2,7 @@
   <div class="container">
     <div class="sidebar">
       <div v-if="dockerListLoaded && dockerList.length > 0" class="docker-list">
-        <div v-for="(item, index) in dockerList" :key="item[1]" @click="selectContainer(item[1])" class="docker-item">
+        <div v-for="(item, index) in dockerList" :key="item[1]" @click="selectContainer(item[1])" :class="{ 'docker-item': true, 'selected': item[1] === selectedContainer }">
           <div class="docker-item-text">{{ item[0] }}</div>
         </div>
       </div>
@@ -97,24 +97,28 @@ export default {
 
 <style scoped>
 
-
 .docker-item {
   color: #000000;
   display: flex;
   align-items: center;
-  justify-content: center; /* Center the text horizontally */
-  padding: 10px 0; /* Add vertical padding for spacing */
-  border-bottom: 1px solid #ccc; /* Add border-bottom to all Docker items */
+  justify-content: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.docker-item.selected {
+  background-color: #6f6e6e; /* Add background color to the selected item */
 }
 
 .docker-item:last-child {
-  border-bottom: none; /* Remove border-bottom for the last Docker item */
+  border-bottom: none;
 }
 
 .docker-item-text {
   font-family: Arial, sans-serif;
   font-size: 14px;
-  text-align: center; /* Center the text vertically */
+  text-align: center;
+  cursor: pointer;
 }
 
 .container {
