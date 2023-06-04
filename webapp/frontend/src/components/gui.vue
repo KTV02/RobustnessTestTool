@@ -28,8 +28,10 @@
           <button class="run-tests-button" @click="runTests">Run Tests</button>
         </div>
       </div>
-   </div>
-    <button class="add-docker-button" @click="openAddDockerDialog">Add Docker Container</button>
+      <div v-else class="empty-results">
+        Run tests to display results
+      </div>
+    </div>
   </div>
 </template>
 
@@ -57,11 +59,6 @@ export default {
         console.error(error);
       }
     },
-    openFileDialog() {
-      // Open file dialog to select a .tar file
-      // Send the selected file to the Python backend for processing
-      // Update the dockerList data property if the operation is successful
-    },
     selectContainer(container) {
       // Set the selectedContainer data property to the clicked Docker container
       // Make a request to the Python backend to check if test results are available for the selected container
@@ -71,11 +68,6 @@ export default {
       // Make a request to the Python backend to run tests for the selected Docker container
       // Update the testResultsAvailable, score, and labels data properties based on the received data
     },
-    openAddDockerDialog() {
-      // Show a dialog for the user to provide a .tar file and container name
-      // Send the selected file and container name to the Python backend for processing
-      // Update the dockerList data property if the operation is successful
-    },
   },
 };
 </script>
@@ -83,36 +75,42 @@ export default {
 <style scoped>
 .container {
   display: flex;
+  background-color: #f8f8f8; /* Change background color here */
 }
 
 .sidebar {
   width: 20%;
-  background-color: #f2f2f2;
+  background-color: #fff; /* Change background color here */
   padding: 20px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
 }
 
 .docker-list {
-  flex-grow: 1;
+  height: calc(100vh - 60px);
   overflow-y: auto;
+}
+
+.docker-item {
+  color: blue; /* Change text color here */
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.empty-results {
+  color: black; /* Set the text color to a light color (e.g., white) */
 }
 
 .empty-list {
   text-align: center;
-  color: #888;
+  color: black; /* Change text color here */
   margin-top: 10px;
 }
 
 .main-panel {
-  width: 80%;
+  flex-grow: 1;
   padding: 20px;
+  background-color: #ffffff; /* Change background color here */
 }
 
-.add-docker-button {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-}
+/* Rest of the styles... */
+
 </style>
+
