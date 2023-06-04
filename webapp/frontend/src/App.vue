@@ -18,7 +18,7 @@ export default {
 
 <style>
 h1 {
-  color: #333;
+  color: red;
   font-size: 24px;
   margin-bottom: 20px;
 }
