@@ -27,11 +27,13 @@ def add_docker_container():
 
 @app.route('/api/run-tests', methods=['POST'])
 def run_tests():
-    selected_container = request.json['container']
-    controller.run_tests_for_container(selected_container)
-    score = controller.get_result_score(selected_container)
-    # Retrieve other necessary data for the response
-    return jsonify({'score': score})
+    image_path = request.json.get('image_path')
+    transformations = request.json.get('transformations')
+    container_name = request.json.get('container_name')
+
+    success = controller.run_tests_for_container(container_name,image_path, transformations)
+
+    return str(success)
 
 if __name__ == '__main__':
     app.run()
