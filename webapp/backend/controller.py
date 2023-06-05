@@ -28,7 +28,8 @@ class Controller:
     def get_result_score(self, path):
         return self.database_helper.get_result_score(path)
 
-    def run_tests_for_container(self):
+    def run_tests_for_container(self,container,images,transformations):
+        self.transformations_helper.apply_transformations(images,transformations)
         # Implementation for running tests for a container
         pass
 
