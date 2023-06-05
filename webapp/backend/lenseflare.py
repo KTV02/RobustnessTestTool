@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageOps
 
-def add_lens_flare(image_path):
+def add_lens_flare(image_path,output):
     # Load the image
     image = Image.open(image_path).convert("RGBA")
 
@@ -18,7 +18,7 @@ def add_lens_flare(image_path):
     result = Image.alpha_composite(image, canvas)
 
     # Display the result
-    result.show()
+    result.save(output)
 
 # Usage example:
-add_lens_flare('website.png')
+add_lens_flare('website.png','output.png')
