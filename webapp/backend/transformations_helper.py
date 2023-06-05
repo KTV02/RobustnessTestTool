@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pygame
 import skimage.io as io
 from skimage import util, filters, transform
 from skimage.util import img_as_ubyte
@@ -11,6 +12,8 @@ import skimage.exposure as exposure
 from skimage import img_as_float
 from skimage.transform import resize
 from skimage.io import imread
+from PIL import Image, ImageDraw, ImageOps
+
 
 
 class TransformationsHelper:
@@ -22,9 +25,9 @@ class TransformationsHelper:
             transformations = file.read().splitlines()
         return transformations
 
-    def add_noise(self, image):
+    def add_noise(self, image,factor):
         # Add noise to the image
-        noisy_image = util.random_noise(image, mode='gaussian',var=0.1)
+        noisy_image = util.random_noise(image, mode='gaussian',var=factor)
         return noisy_image
 
     def adjust_imagecontrast(self, image, factor):
@@ -37,13 +40,13 @@ class TransformationsHelper:
         adjusted_image = exposure.adjust_gamma(image, gamma=factor)
         return adjusted_image
 
-    def adjust_imagesharpness(self, image):
+    def adjust_imagesharpness(self, image,factor):
         # Sharpen the image
-        sharpened_image = filters.unsharp_mask(image, radius=1.0, amount=1.5)
+        sharpened_image = filters.unsharp_mask(image, radius=1.0, amount=factor)
         return sharpened_image
 
 
-    def add_smoke(self, image):
+    def add_smoke(self, image,factor):
         # Convert the image to a PIL image if it's a NumPy array
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
@@ -68,7 +71,7 @@ class TransformationsHelper:
 
         # Apply smoke texture with transparency to the image
         smoke_image_array = image_array.copy()
-        alpha = 0.8  # Adjust the transparency level as desired
+        alpha = factor  # Adjust the transparency level as desired
 
         for y in range(image.height):
             for x in range(image.width):
@@ -105,6 +108,84 @@ class TransformationsHelper:
 
         return image_with_glare
 
+    def add_lens_flare(self,image):
+        # Convert the numpy array to PIL Image
+        image = Image.fromarray(image).convert("RGBA")
+
+        # Create a blank canvas with the same dimensions as the image
+        canvas = Image.new("RGBA", image.size, (0, 0, 0, 0))
+
+        # Create a white circle in the center of the canvas
+        center_x = image.width // 2
+        center_y = image.height // 2
+        radius = min(image.width, image.height) // 4
+        draw = ImageDraw.Draw(canvas)
+        draw.ellipse([(center_x - radius, center_y - radius), (center_x + radius, center_y + radius)],
+                     fill=(255, 255, 255, 255))
+
+        # Apply the lens flare effect by blending the canvas with the image
+        result = Image.alpha_composite(image, canvas)
+
+        # Convert the PIL Image back to numpy array
+        result = np.array(result)
+
+        # Return the result as numpy array
+        return result
+
+    def add_custom_lens_flare(self, image_array, flare_intensity):
+        # Convert the NumPy array to a PIL Image
+        image_pil = Image.fromarray(image_array)
+
+        # Initialize pygame
+        pygame.init()
+
+        # Set the temporary display mode
+        display = pygame.display.set_mode((1, 1))
+
+        # Create a surface from the PIL Image
+        image_surface = pygame.image.fromstring(image_pil.tobytes(), image_pil.size, image_pil.mode)
+
+        # Load the flare overlays
+        flare_path1 = 'Assets/untitled7.png'
+        flare_path2 = 'Assets/untitled8.png'
+        flare1 = pygame.image.load(flare_path1)
+        flare2 = pygame.image.load(flare_path2)
+
+        # Resize the flare overlays to match the image dimensions
+        flare1 = pygame.transform.scale(flare1, image_surface.get_size())
+        flare2 = pygame.transform.scale(flare2, (int(image_surface.get_width() * 0.4), int(image_surface.get_height() * 0.4)))
+
+        # Adjust the flare intensity by increasing the brightness of the flare images
+        flare1_pixels = np.array(pygame.surfarray.pixels3d(flare1))
+        flare1_pixels = np.clip(flare1_pixels * flare_intensity, 0, 255).astype(np.uint8)
+        flare1 = pygame.surfarray.make_surface(flare1_pixels)
+        del flare1_pixels
+
+        flare2_pixels = np.array(pygame.surfarray.pixels3d(flare2))
+        flare2_pixels = np.clip(flare2_pixels * flare_intensity, 0, 255).astype(np.uint8)
+        flare2 = pygame.surfarray.make_surface(flare2_pixels)
+        del flare2_pixels
+
+        # Create a new surface to hold the modified image
+        modified_image = pygame.Surface(image_surface.get_size(), pygame.SRCALPHA)
+
+        # Blit the original image onto the new surface
+        modified_image.blit(image_surface, (0, 0))
+
+        # Add the first lens flare effect to the new surface
+        modified_image.blit(flare1, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+
+        # Add the second lens flare effect to the new surface
+        flare2_pos = (int(image_surface.get_width() * 0.3), int(image_surface.get_height() * 0.2))
+        modified_image.blit(flare2, flare2_pos, special_flags=pygame.BLEND_RGB_ADD)
+
+        # Convert the modified image to a numpy array and transpose it
+        modified_image_array = np.transpose(pygame.surfarray.array3d(modified_image), axes=(1, 0, 2))
+
+        return modified_image_array
+
+
+
     def apply_transformations(self, image_path, transformations, output):
         if not os.path.exists(output):
             os.makedirs(output)
@@ -115,21 +196,45 @@ class TransformationsHelper:
 
         transformed_images = []
 
+        # Define valid value ranges for each transformation
+        valid_ranges = {
+            'noise': (0, 0.5),  # Example values, adjust as needed
+            'contrast': (0.01, 5),  # Example values, adjust as needed
+            'brightness': (0, 10),  # Example values, adjust as needed
+            'sharpness': (0, 20),  # Example values, adjust as needed
+            'smoke': (0, 1),  # Example values, adjust as needed
+            'glare': (0, 10)  # Example values, adjust as needed
+        }
+
         for transformation in transformations:
+            transformation_label = transformation[0]
+            intensity = transformation[1]
+
+            # Check if the transformation is valid
+            if transformation_label not in valid_ranges:
+                print("Unknown transformation:", transformation_label)
+                continue
+
+            # Map the intensity parameter from 1-100 to the valid value range
+            min_value, max_value = valid_ranges[transformation_label]
+            mapped_intensity = min_value + (max_value - min_value) * (intensity - 1) / 99
+
+            print(mapped_intensity)
+
             transformed_image = image.copy()
 
-            if transformation == 'noise':
-                transformed_image = self.add_noise(transformed_image)
-            elif transformation == 'contrast':
-                transformed_image = self.adjust_imagecontrast(transformed_image,1.5)
-            elif transformation == 'brightness':
-                transformed_image = self.adjust_imagebrightness(transformed_image,3)
-            elif transformation == 'sharpness':
-                transformed_image = self.adjust_imagesharpness(transformed_image)
-            elif transformation == 'smoke':
-                transformed_image = self.add_smoke(transformed_image)
-            elif transformation == 'glare':
-                transformed_image = self.add_imageglare(transformed_image)
+            if transformation_label == 'noise':
+                transformed_image = self.add_noise(transformed_image,mapped_intensity)
+            elif transformation_label == 'contrast':
+                transformed_image = self.adjust_imagecontrast(transformed_image, mapped_intensity)
+            elif transformation_label == 'brightness':
+                transformed_image = self.adjust_imagebrightness(transformed_image, mapped_intensity)
+            elif transformation_label == 'sharpness':
+                transformed_image = self.adjust_imagesharpness(transformed_image, mapped_intensity)
+            elif transformation_label == 'smoke':
+                transformed_image = self.add_smoke(transformed_image,mapped_intensity)
+            elif transformation_label == 'glare':
+                transformed_image = self.add_custom_lens_flare(transformed_image, mapped_intensity)
 
             transformed_images.append(transformed_image)
             transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))
@@ -138,20 +243,18 @@ class TransformationsHelper:
             image_name = os.path.basename(image_path)
             image_extension = os.path.splitext(image_path)[1]
 
-            transformed_image_name = "{}-{}{}".format(os.path.splitext(image_name)[0], transformation, image_extension)
+            transformed_image_name = "{}-{}{}".format(os.path.splitext(image_name)[0], transformation_label, image_extension)
             transformed_image_path = os.path.join(output, transformed_image_name)
 
-            transformed_image_pil.save(transformed_image_path)  
+            transformed_image_pil.save(transformed_image_path)
+
         return transformed_images
 
-# Usage example:
-helper = TransformationsHelper(transformations_file='transformations.txt')
-helper.apply_transformations("C:\\Users\\Lennart Kremp\\Downloads\\website.jpg", ["noise"], "C:\\Users\\Lennart Kremp\\OneDrive\\Studium\\Bachelorarbeit\\RobustnessTestTool\\output")
 
 transformations_file = "path/to/transformations.txt"
-image_path = "C:\\Users\\Lennart Kremp\\Downloads\\website.jpg"
+image_path = "Assets/website.png"
 output_path = "C:\\Users\\Lennart Kremp\\OneDrive\\Studium\\Bachelorarbeit\\RobustnessTestTool\\output"
-transformations = ["noise","contrast","brightness","sharpness","smoke","glare"]
-
+#transformations = ["noise","contrast","brightness","sharpness","smoke","glare"]
+transformations = [["glare",5]]
 helper = TransformationsHelper(transformations_file)
 helper.apply_transformations(image_path, transformations, output_path)
