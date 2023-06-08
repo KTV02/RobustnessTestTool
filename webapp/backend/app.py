@@ -1,14 +1,13 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS  # Import CORS from flask_cors
 from controller import Controller
-from database_helper import DatabaseHelper
+from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
-from files_helper import FilesHelper
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes -> to prevent same origin error
 
-controller = Controller(DatabaseHelper("./storage/results.db"), TransformationsHelper("./storage/transformations.txt"), FilesHelper())
+controller = Controller(StorageHelper("./storage/results.db"), TransformationsHelper("./storage/transformations.txt"))
 
 @app.route('/api/docker-containers', methods=['GET'])
 def get_docker_containers():

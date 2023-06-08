@@ -88,10 +88,12 @@ export default {
     async runTests() {
       try {
         const transformations = this.selectedCheckboxes;
+        const containerName = this.selectedContainer;
+        console.log(containerName)
         const response = await this.$axios.post('/api/run-tests', {
           image_path: 'Assets/website.png', // Replace with the actual image path value
           transformations,
-          container_name: this.selectedContainer.name,
+          container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
 
         // Handle the response as per your requirements
