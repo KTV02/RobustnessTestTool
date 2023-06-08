@@ -32,7 +32,10 @@ class Controller:
         output="./images/"+container+"/transformations/"
         self.transformations_helper.apply_transformations(images,transformations,output)
         # Implementation for running tests for a container
-        pass
+
+    #returns an Array of labels of the available transformations
+    def get_available_transformations(self):
+        return self.transformations_helper.get_available_transformations()
 
     def exit(self):
         pass

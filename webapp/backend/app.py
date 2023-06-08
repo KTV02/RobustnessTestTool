@@ -35,5 +35,10 @@ def run_tests():
 
     return str(success)
 
+@app.route('/api/available-transformations', methods=['GET'])
+def get_available_transformations():
+    transformations = controller.get_available_transformations()
+    return jsonify(transformations)
+
 if __name__ == '__main__':
     app.run()

@@ -1,3 +1,6 @@
-Helligkeit
-Rauschen
-Kontrast
+noise
+contrast
+brightness
+sharpness
+smoke
+glare
