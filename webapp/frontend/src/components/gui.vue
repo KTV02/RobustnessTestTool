@@ -30,7 +30,7 @@
               <input type="checkbox" :id="'checkbox-' + index" v-model="selectedCheckboxes" :value="label" @change="updateRunButtonStatus">
               <label :for="'checkbox-' + index">{{ label }}</label>
             </div>
-            <button class="run-tests-button" :disabled="!isRunButtonActive" @click="runTests">Run Tests</button>
+            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests</button>
           </div>
         </div>
       </div>
@@ -58,8 +58,17 @@ export default {
   created() {
     // Execute loadDockerContainers method before creating the component
     this.loadDockerContainers();
+    this.loadTransformationLabels();
   },
   methods: {
+     async loadTransformationLabels() {
+      try {
+        const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
+        this.labels = response.data; // Set the labels array with the received data
+      } catch (error) {
+        console.error(error);
+      }
+    },
     async loadDockerContainers() {
       try {
         const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
@@ -75,9 +84,6 @@ export default {
     },
     async loadTestResults(container) {
       // Implement your logic to load test results based on the selected container
-    },
-    updateRunButtonStatus() {
-      this.isRunButtonActive = this.selectedCheckboxes.length > 0;
     },
     async runTests() {
       try {
@@ -186,6 +192,11 @@ export default {
   border: none;
   cursor: pointer;
 }
+.run-tests-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
 
 input[type="checkbox"] {
   margin-right: 8px;
