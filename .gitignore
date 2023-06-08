@@ -3,3 +3,5 @@ dockers/*
 output/*
 webapp/backend/images/*
 webapp/backend/__pycache__/*
+webapp/backend/.idea/*
+webapp/backend/storage/tar/*
