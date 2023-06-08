@@ -25,7 +25,13 @@
         </div>
         <div v-else>
           <div class="no-results">No results present for {{ selectedContainer.name }}</div>
-          <button class="run-tests-button" @click="runTests">Run Tests</button>
+          <div v-if="labels.length > 0">
+            <div v-for="(label, index) in labels" :key="index">
+              <input type="checkbox" :id="'checkbox-' + index" v-model="selectedCheckboxes" :value="label" @change="updateRunButtonStatus">
+              <label :for="'checkbox-' + index">{{ label }}</label>
+            </div>
+            <button class="run-tests-button" :disabled="!isRunButtonActive" @click="runTests">Run Tests</button>
+          </div>
         </div>
       </div>
       <div v-else class="empty-results">
@@ -37,7 +43,6 @@
 </template>
 
 <script>
-
 export default {
   data() {
     return {
@@ -47,6 +52,7 @@ export default {
       dockerListLoaded: false,
       score: 0, // Robustness score
       labels: [], // Array of labels for the boxes
+      selectedCheckboxes: [], // Array to store the selected checkbox labels
     };
   },
   created() {
@@ -59,9 +65,6 @@ export default {
         const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
         this.dockerList = response.data;
         this.dockerListLoaded = true; // Set the flag to indicate that the data has been loaded
-        console.log(this.dockerList)
-        console.log(this.dockerList.length)
-
       } catch (error) {
         console.error(error);
       }
@@ -71,10 +74,22 @@ export default {
       this.loadTestResults(container);
     },
     async loadTestResults(container) {
+      // Implement your logic to load test results based on the selected container
+    },
+    updateRunButtonStatus() {
+      this.isRunButtonActive = this.selectedCheckboxes.length > 0;
+    },
+    async runTests() {
       try {
+        const transformations = this.selectedCheckboxes;
         const response = await this.$axios.post('/api/run-tests', {
-          container: container.name
+          image_path: 'Assets/website.png', // Replace with the actual image path value
+          transformations,
+          container_name: this.selectedContainer.name,
         }); // Update the URL with the correct backend URL and endpoint
+
+        // Handle the response as per your requirements
+        // Update the testResultsAvailable, score, and labels data properties based on the received data
         this.testResultsAvailable = true;
         this.score = response.data.score;
         // Update other necessary data based on the received response
@@ -82,23 +97,22 @@ export default {
         console.error(error);
       }
     },
-    runTests() {
-      // Make a request to the Python backend to run tests for the selected Docker container
-      // Update the testResultsAvailable, score, and labels data properties based on the received data
-    },
     openAddDockerDialog() {
       // Show a dialog for the user to provide a .tar file and container name
       // Send the selected file and container name to the Python backend for processing
       // Update the dockerList data property if the operation is successful
     },
   },
+  computed: {
+    isRunButtonActive() {
+      return this.selectedCheckboxes.length > 0;
+    },
+  },
 };
 </script>
-
 <style scoped>
-
 .docker-item {
-  color: #000000;
+  color: #ffffff; /* Change the text color to white */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,7 +121,7 @@ export default {
 }
 
 .docker-item.selected {
-  background-color: #6f6e6e; /* Add background color to the selected item */
+  background-color: #6f6e6e;
 }
 
 .docker-item:last-child {
@@ -127,7 +141,7 @@ export default {
 
 .sidebar {
   width: 20%;
-  background-color: #f2f2f2;
+  background-color: #333333; /* Change the sidebar background color to dark gray */
   padding: 20px;
 }
 
@@ -157,7 +171,7 @@ export default {
 .run-tests-button {
   padding: 10px 20px;
   background-color: #007bff;
-  color: #fff;
+  color: #ffffff; /* Change the text color of the button to white */
   border: none;
   cursor: pointer;
 }
@@ -168,8 +182,12 @@ export default {
   right: 20px;
   padding: 10px 20px;
   background-color: #007bff;
-  color: #fff;
+  color: #ffffff; /* Change the text color of the button to white */
   border: none;
   cursor: pointer;
+}
+
+input[type="checkbox"] {
+  margin-right: 8px;
 }
 </style>
