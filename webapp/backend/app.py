@@ -29,7 +29,7 @@ def run_tests():
     image_path = request.json.get('image_path')
     transformations = request.json.get('transformations')
     container_name = request.json.get('container_name')
-
+    print(transformations)
     success = controller.run_tests_for_container(container_name,image_path, transformations)
 
     return str(success)

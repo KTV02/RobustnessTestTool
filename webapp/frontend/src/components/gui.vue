@@ -2,7 +2,8 @@
   <div class="container">
     <div class="sidebar">
       <div v-if="dockerListLoaded && dockerList.length > 0" class="docker-list">
-        <div v-for="(item, index) in dockerList" :key="item[1]" @click="selectContainer(item[1])" :class="{ 'docker-item': true, 'selected': item[1] === selectedContainer }">
+        <div v-for="(item, index) in dockerList" :key="item[1]" @click="selectContainer(item[1])"
+             :class="{ 'docker-item': true, 'selected': item[1] === selectedContainer }">
           <div class="docker-item-text">{{ item[0] }}</div>
         </div>
       </div>
@@ -24,13 +25,23 @@
           </div>
         </div>
         <div v-else>
-          <div class="no-results">No results present for {{ selectedContainer.name }}</div>
+          <div class="no-results">No results present for {{ selectedContainer[1] }}. Run the Tests below!</div>
           <div v-if="labels.length > 0">
             <div v-for="(label, index) in labels" :key="index">
-              <input type="checkbox" :id="'checkbox-' + index" v-model="selectedCheckboxes" :value="label" @change="updateRunButtonStatus">
-              <label :for="'checkbox-' + index">{{ label }}</label>
+              <div class="checkbox-container">
+                <div class="checkbox-label">
+                  <input type="checkbox" :id="'checkbox-' + index" v-model="checkboxes" :value="label"
+                         @change="updateCheckboxes($event.target.checked ? 1 : 0, index)">
+                  <label :for="'checkbox-' + index">{{ label }}</label>
+                </div>
+                <div class="slider-container">
+                  <input type="range" min="1" max="100" v-model="sliderValues[index]"
+                         @input="updateSliderValue($event.target.value, index)"/></div>
+              </div>
             </div>
-            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests</button>
+            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests
+            </button>
+
           </div>
         </div>
       </div>
@@ -52,7 +63,9 @@ export default {
       dockerListLoaded: false,
       score: 0, // Robustness score
       labels: [], // Array of labels for the boxes
-      selectedCheckboxes: [], // Array to store the selected checkbox labels
+      checkboxes: [], // Array to store the selected checkbox labels
+      sliderValues: [], // Add sliderValues property
+      defaultSliderValue: 1,
     };
   },
   created() {
@@ -61,13 +74,30 @@ export default {
     this.loadTransformationLabels();
   },
   methods: {
-     async loadTransformationLabels() {
+    async loadTransformationLabels() {
       try {
         const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
         this.labels = response.data; // Set the labels array with the received data
+        this.initializeCheckboxes()
+        this.initializeSliderValues()
       } catch (error) {
         console.error(error);
       }
+
+    },
+    initializeCheckboxes() {
+      this.checkboxes = Array.from({length: this.labels.length}, () => 0);
+    },
+    initializeSliderValues() {
+      this.sliderValues = Array.from({length: this.labels.length}, () => this.defaultSliderValue);
+    },
+    updateCheckboxes(value, index) {
+      this.checkboxes[index] = value;
+    },
+    updateSliderValue(value, index) {
+      // Update the slider value in the sliderValues array
+      this.sliderValues[index] = value;
+      //this.updateRunButtonStatus();
     },
     async loadDockerContainers() {
       try {
@@ -87,12 +117,19 @@ export default {
     },
     async runTests() {
       try {
-        const transformations = this.selectedCheckboxes;
+        //This takes the indexes of labels and sliderValues only when the corresponding checkbox is checked
+        const transformationArray = this.checkboxes.reduce((result, checkbox, index) => {
+          if (checkbox === 1) {
+            result.push([this.labels[index], this.sliderValues[index]]);
+          }
+          return result;
+        }, []);
+
         const containerName = this.selectedContainer;
 
         const response = await this.$axios.post('/api/run-tests', {
           image_path: 'storage/Assets/website.png', // Replace with the actual image path value
-          transformations,
+          transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
 
@@ -152,7 +189,7 @@ export default {
   },
   computed: {
     isRunButtonActive() {
-      return this.selectedCheckboxes.length > 0;
+      return this.checkboxes.includes(1);
     },
   },
 };
@@ -233,11 +270,32 @@ export default {
   border: none;
   cursor: pointer;
 }
+
 .run-tests-button.disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
 
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px; /* Add margin-bottom for vertical spacing */
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  flex: 1; /* Let the checkbox and label occupy available space */
+}
+
+.slider-container {
+  flex: 1; /* Let the slider occupy available space */
+  margin-left: 8px; /* Add margin-left for spacing between checkbox-label and slider */
+}
+
+input[type="range"] {
+  width: 100%; /* Set the width to occupy the full space within slider-container */
+}
 
 input[type="checkbox"] {
   margin-right: 8px;

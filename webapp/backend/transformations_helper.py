@@ -210,7 +210,7 @@ class TransformationsHelper:
 
         for transformation in transformations:
             transformation_label = transformation[0]
-            intensity = transformation[1]
+            intensity = int(transformation[1])
 
             # Check if the transformation is valid
             if transformation_label not in valid_ranges:
