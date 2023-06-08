@@ -1,3 +1,5 @@
 
 dockers/*
 output/*
+webapp/backend/images/*
+webapp/backend/__pycache__/*
