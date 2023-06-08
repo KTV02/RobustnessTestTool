@@ -89,9 +89,9 @@ export default {
       try {
         const transformations = this.selectedCheckboxes;
         const containerName = this.selectedContainer;
-        console.log(containerName)
+
         const response = await this.$axios.post('/api/run-tests', {
-          image_path: 'Assets/website.png', // Replace with the actual image path value
+          image_path: 'storage/Assets/website.png', // Replace with the actual image path value
           transformations,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
@@ -105,10 +105,49 @@ export default {
         console.error(error);
       }
     },
-    openAddDockerDialog() {
-      // Show a dialog for the user to provide a .tar file and container name
-      // Send the selected file and container name to the Python backend for processing
-      // Update the dockerList data property if the operation is successful
+    async openAddDockerDialog() {
+      try {
+        // Open file dialog to select a .tar file
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.tar';
+        fileInput.addEventListener('change', async () => {
+          const file = fileInput.files[0];
+          if (!file) return;
+
+          // Ask the user for the container name
+          const containerName = prompt('Enter the name for the Docker container');
+          if (!containerName) return;
+
+          try {
+            // Create form data to send the file and container name to the backend
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('name', containerName);
+
+            // Send request to add the Docker container
+            const response = await this.$axios.post('/api/add-docker-container', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
+            });
+
+            // Check the response for success and update the dockerList
+            if (response.data.message === 'Docker container added successfully') {
+              this.loadDockerContainers();
+            } else {
+              console.error(response.data.message);
+            }
+          } catch (error) {
+            console.error(error);
+          }
+        });
+
+        // Trigger the file input dialog
+        fileInput.click();
+      } catch (error) {
+        console.error(error);
+      }
     },
   },
   computed: {

@@ -17,8 +17,10 @@ from PIL import Image, ImageDraw, ImageOps
 
 
 class TransformationsHelper:
-    def __init__(self, transformations_file):
-        self.transformations_file = transformations_file
+    def __init__(self, environment):
+        self.environment=environment
+        self.transformations_file = self.environment.get_transformation_file()
+        self.assets=self.environment.get_assets()
 
     def get_available_transformations(self):
         with open(self.transformations_file, "r") as file:
@@ -146,8 +148,8 @@ class TransformationsHelper:
         image_surface = pygame.image.fromstring(image_pil.tobytes(), image_pil.size, image_pil.mode)
 
         # Load the flare overlays
-        flare_path1 = 'Assets/untitled7.png'
-        flare_path2 = 'Assets/untitled8.png'
+        flare_path1 = self.assets+'untitled7.png'
+        flare_path2 = self.assets+'untitled8.png'
         flare1 = pygame.image.load(flare_path1)
         flare2 = pygame.image.load(flare_path2)
 
