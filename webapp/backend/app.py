@@ -24,7 +24,12 @@ def add_docker_container():
         return jsonify({'message': 'Docker container added successfully'})
     else:
         return jsonify({'message': message}), 400
-
+@app.route('/api/load-container-results', methods=['POST'])
+def load_container_results():
+    container_id = request.json.get('container')
+    print(container_id)
+    results = controller.load_container_results(container_id)
+    return jsonify(results)
 @app.route('/api/run-tests', methods=['POST'])
 def run_tests():
     image_path = request.json.get('image_path')

@@ -27,6 +27,52 @@ class StorageHelper:
         conn.commit()
         conn.close()
 
+    def create_results_database(self, transformations):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        # Check if the 'results' table exists
+        c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='results'")
+        table_exists = c.fetchone()
+
+        query=""
+        if not table_exists:
+            # Tabelle existiert nicht, erstelle sie vollständig
+
+            # Create the results table with foreign key
+            query = '''
+                CREATE TABLE IF NOT EXISTS results (
+                    id INTEGER PRIMARY KEY,
+                    dockerid INTEGER,
+                    date TEXT,
+                    score DOUBLE,
+                    {transformation_columns},
+                    FOREIGN KEY (dockerid) REFERENCES docker_containers(id)
+                )
+                '''.format(
+                transformation_columns=", ".join(f"{transformation}result TEXT" for transformation in transformations))
+        else:
+            # Get the current columns of the 'results' table
+            c.execute("PRAGMA table_info(results)")
+            existing_columns = [column[1] for column in c.fetchall()]
+
+            # Add missing columns
+            columns_to_add = []
+            for transformation in transformations:
+                if f"{transformation}result" not in existing_columns:
+                    columns_to_add.append(f"{transformation}result TEXT")
+
+            if columns_to_add:
+                # Alter the table to add missing columns
+                query = '''
+                        ALTER TABLE results
+                        {columns_to_add}
+                        '''.format(columns_to_add=", ".join("ADD COLUMN " + column for column in columns_to_add))
+        # Execute the query
+        c.execute(query)
+        # Commit the changes and close the connection
+        conn.commit()
+        conn.close()
+
     def create_dir(self, dir_path):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
@@ -57,38 +103,6 @@ class StorageHelper:
         except Exception as e:
             return False, f"Container failed to register: {str(e)}"
 
-    def create_results_database(self, transformations):
-        if not self.database_exists():
-            # Datenbank existiert nicht, erstelle sie vollständig
-            conn = sqlite3.connect(self.environment.get_database_file())
-            c = conn.cursor()
-
-            columns = ["dockerpath", "date", "score"] + [f"{transformation}result" for transformation in
-                                                         transformations]
-            column_definitions = ", ".join(f"{column} TEXT" for column in columns)
-
-            create_table_query = f"CREATE TABLE results ({column_definitions})"
-            c.execute(create_table_query)
-
-            conn.commit()
-            conn.close()
-        else:
-            # Datenbank existiert, überprüfe und ergänze fehlende Spalten
-            conn = sqlite3.connect(self.environment.get_database_file())
-            c = conn.cursor()
-
-            existing_columns = self.get_existing_columns(c, "results")
-
-            columns_to_add = [f"{transformation}result" for transformation in transformations if
-                              f"{transformation}result" not in existing_columns]
-
-            for column in columns_to_add:
-                alter_table_query = f"ALTER TABLE results ADD COLUMN {column} TEXT"
-                c.execute(alter_table_query)
-
-            conn.commit()
-            conn.close()
-
     def check_results_exist(self, path):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
@@ -99,10 +113,19 @@ class StorageHelper:
         print(result)
         return result is not None
 
-    def get_result_score(self, path):
+    def get_dockerpath(self, container_id):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
-        c.execute("SELECT score FROM results WHERE Dockerpath=?", (path,))
+        c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
+        result = c.fetchone()
+        conn.close()
+        return result
+
+    def get_result_score(self, dockerid):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        print(dockerid)
+        c.execute("SELECT score FROM results WHERE dockerid=?", (dockerid,))
         result = c.fetchone()
         conn.close()
         return result

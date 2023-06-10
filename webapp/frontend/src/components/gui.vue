@@ -25,7 +25,7 @@
           </div>
         </div>
         <div v-else>
-          <div class="no-results">No results present for {{ selectedContainer[1] }}. Run the Tests below!</div>
+          <div class="no-results">No results for {{ findNameForContainer(selectedContainer)}}. Run the Tests below!</div>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
@@ -108,6 +108,7 @@ export default {
       try {
         const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
         this.dockerList = response.data;
+        console.log(this.dockerList)
         this.dockerListLoaded = true; // Set the flag to indicate that the data has been loaded
       } catch (error) {
         console.error(error);
@@ -115,10 +116,26 @@ export default {
     },
     selectContainer(container) {
       this.selectedContainer = container;
+      console.log(this.selectedContainer)
       this.loadTestResults(container);
+    },
+    findNameForContainer(container_id){
+      return this.dockerList.find(arr => arr[1] === container_id)[0];
     },
     async loadTestResults(container) {
       // Implement your logic to load test results based on the selected container
+      const response = await this.$axios.post('/api/load-container-results', {
+        container: container,
+      });
+      if(response.status=200&&response.data==null){
+        this.testResultsAvailable=false;
+      }else if(reponse.status=200&&response.data!=null){
+        this.testResultsAvailable=true;
+      }else{
+        console.error(response)
+      }
+
+
     },
     async runTests() {
       try {
@@ -232,7 +249,7 @@ export default {
 .sidebar {
   width: 20%;
   background-color: #333333;
-  //padding: 20px;
+//padding: 20px;
 }
 
 .docker-list {
@@ -307,7 +324,7 @@ export default {
 
 .checkbox-title,
 .slider-title {
-  color:blue;
+  color: blue;
   flex: 1;
   font-weight: bold;
 }

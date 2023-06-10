@@ -17,6 +17,10 @@ class Controller:
         results = self.storage_helper.load_docker_containers()
         return results
 
+    def load_container_results(self,container_id):
+        result = self.storage_helper.get_result_score(container_id)
+        return result
+
     def save_user_tar(self, tar_file):
         temp_path = self.environment.get_tar_dir() + "temp" + str(int(time.time())) + ".tar"
         # save tar file locally
