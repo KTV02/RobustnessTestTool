@@ -25,7 +25,8 @@
           </div>
         </div>
         <div v-else>
-          <div class="no-results">No results for {{ findNameForContainer(selectedContainer)}}. Run the Tests below!</div>
+          <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
+          </div>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
@@ -45,8 +46,13 @@
                 </div>
               </div>
             </div>
-            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests
+            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive||isTransformingImages }"
+                    @click="runTests">Run Tests
             </button>
+            <div v-if="isTransformingImages">
+              <p>Transforming Testdata...</p>
+            </div>
+            <loader v-if="isTransformingImages"/>
           </div>
         </div>
       </div>
@@ -59,9 +65,15 @@
 </template>
 
 <script>
+import Loader from 'vue-spinner/src/ClipLoader.vue'
+
 export default {
+  components: {
+    Loader,
+  },
   data() {
     return {
+      isTransformingImages: false,
       dockerList: [], // 2d List of Docker containers [0] is name and [1] is unique id
       selectedContainer: null, // Selected Docker container
       testResultsAvailable: false, // Boolean indicating if test results are available
@@ -119,7 +131,7 @@ export default {
       console.log(this.selectedContainer)
       this.loadTestResults(container);
     },
-    findNameForContainer(container_id){
+    findNameForContainer(container_id) {
       return this.dockerList.find(arr => arr[1] === container_id)[0];
     },
     async loadTestResults(container) {
@@ -127,11 +139,11 @@ export default {
       const response = await this.$axios.post('/api/load-container-results', {
         container: container,
       });
-      if(response.status=200&&response.data==null){
-        this.testResultsAvailable=false;
-      }else if(reponse.status=200&&response.data!=null){
-        this.testResultsAvailable=true;
-      }else{
+      if (response.status = 200 && response.data == null) {
+        this.testResultsAvailable = false;
+      } else if (reponse.status = 200 && response.data != null) {
+        this.testResultsAvailable = true;
+      } else {
         console.error(response)
       }
 
@@ -148,13 +160,13 @@ export default {
         }, []);
 
         const containerName = this.selectedContainer;
-
+        this.isTransformingImages = true;
         const response = await this.$axios.post('/api/run-tests', {
           image_path: 'storage/Assets/website.png', // Replace with the actual image path value
           transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
-
+        this.isTransformingImages = false;
         // Handle the response as per your requirements
         // Update the testResultsAvailable, score, and labels data properties based on the received data
         this.testResultsAvailable = true;

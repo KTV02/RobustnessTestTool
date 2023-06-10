@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "axios": "^1.4.0",
-    "vue": "^3.3.2"
+    "vue": "^3.3.2",
+    "vue-spinner": "^1.0.4",
+    "vue-spinners": "^1.0.2"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.2.3",
