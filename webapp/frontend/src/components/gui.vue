@@ -40,7 +40,7 @@
                   <label :for="'checkbox-' + index">{{ label }}</label>
                 </div>
                 <div class="slider-container">
-                  <input type="range" min="1" max="100" v-model="sliderValues[index]"
+                  <input type="range" min="1" max="10" v-model="sliderValues[index]"
                          @input="updateSliderValue($event.target.value, index)"/>
                 </div>
               </div>

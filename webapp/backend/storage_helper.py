@@ -118,8 +118,11 @@ class StorageHelper:
         c = conn.cursor()
         c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
         result = c.fetchone()
+        dockerpath= result[0]
+        if "\\" in dockerpath:
+            dockerpath=dockerpath.replace("\\","/")
         conn.close()
-        return result
+        return dockerpath
 
     def get_result_score(self, dockerid):
         conn = sqlite3.connect(self.environment.get_database_file())

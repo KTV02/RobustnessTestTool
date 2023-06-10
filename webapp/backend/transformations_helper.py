@@ -1,40 +1,39 @@
 import os
-
+import concurrent.futures
+import io
 import numpy as np
 import pygame
-import skimage.io as io
 from skimage import util, filters, transform
 from skimage.util import img_as_ubyte
-from skimage.filters import gaussian
-from skimage.transform import rescale
-from PIL import Image
 import skimage.exposure as exposure
 from skimage import img_as_float
 from skimage.transform import resize
 from skimage.io import imread
 from PIL import Image, ImageDraw, ImageOps
-
+import skimage.io as io
+from skimage.filters import gaussian
+from skimage.transform import rescale
 
 
 class TransformationsHelper:
     def __init__(self, environment):
-        self.environment=environment
+        self.environment = environment
         self.transformations_file = self.environment.get_transformation_file()
-        self.assets=self.environment.get_assets()
+        self.assets = self.environment.get_assets()
 
     def get_available_transformations(self):
         with open(self.transformations_file, "r") as file:
             transformations = file.read().splitlines()
         return transformations
 
-    def add_noise(self, image,factor):
+    def add_noise(self, image, factor):
         # Add noise to the image
-        noisy_image = util.random_noise(image, mode='gaussian',var=factor)
+        noisy_image = util.random_noise(image, mode='gaussian', var=factor)
         return noisy_image
 
     def adjust_imagecontrast(self, image, factor):
         # Adjust contrast of the image
-        adjusted_image = exposure.adjust_gamma(image, gamma=1/factor)
+        adjusted_image = exposure.adjust_gamma(image, gamma=1 / factor)
         return adjusted_image
 
     def adjust_imagebrightness(self, image, factor):
@@ -42,13 +41,12 @@ class TransformationsHelper:
         adjusted_image = exposure.adjust_gamma(image, gamma=factor)
         return adjusted_image
 
-    def adjust_imagesharpness(self, image,factor):
+    def adjust_imagesharpness(self, image, factor):
         # Sharpen the image
         sharpened_image = filters.unsharp_mask(image, radius=1.0, amount=factor)
         return sharpened_image
 
-
-    def add_smoke(self, image,factor):
+    def add_smoke(self, image, factor):
         # Convert the image to a PIL image if it's a NumPy array
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
@@ -78,15 +76,15 @@ class TransformationsHelper:
         for y in range(image.height):
             for x in range(image.width):
                 smoke_image_array[y, x] = (
-                    alpha * smoke_texture_array[y, x] +
-                    (1 - alpha) * image_array[y, x]
-                ) * smoke_mask[y, x] + image_array[y, x] * (1 - smoke_mask[y, x])
+                                                  alpha * smoke_texture_array[y, x] +
+                                                  (1 - alpha) * image_array[y, x]
+                                          ) * smoke_mask[y, x] + image_array[y, x] * (1 - smoke_mask[y, x])
 
         # Convert the resulting array back to PIL image
         smoke_image = Image.fromarray(smoke_image_array.astype(np.uint8))
 
         return smoke_image
-    
+
     def add_imageglare(self, image):
         # Load the glare pattern
         glare_pattern = imread('glare_pattern.jpg')
@@ -110,7 +108,7 @@ class TransformationsHelper:
 
         return image_with_glare
 
-    def add_lens_flare(self,image):
+    def add_lens_flare(self, image):
         # Convert the numpy array to PIL Image
         image = Image.fromarray(image).convert("RGBA")
 
@@ -148,14 +146,15 @@ class TransformationsHelper:
         image_surface = pygame.image.fromstring(image_pil.tobytes(), image_pil.size, image_pil.mode)
 
         # Load the flare overlays
-        flare_path1 = self.assets+'untitled7.png'
-        flare_path2 = self.assets+'untitled8.png'
+        flare_path1 = self.assets + 'untitled7.png'
+        flare_path2 = self.assets + 'untitled8.png'
         flare1 = pygame.image.load(flare_path1)
         flare2 = pygame.image.load(flare_path2)
 
         # Resize the flare overlays to match the image dimensions
         flare1 = pygame.transform.scale(flare1, image_surface.get_size())
-        flare2 = pygame.transform.scale(flare2, (int(image_surface.get_width() * 0.4), int(image_surface.get_height() * 0.4)))
+        flare2 = pygame.transform.scale(flare2,
+                                        (int(image_surface.get_width() * 0.4), int(image_surface.get_height() * 0.4)))
 
         # Adjust the flare intensity by increasing the brightness of the flare images
         flare1_pixels = np.array(pygame.surfarray.pixels3d(flare1))
@@ -186,9 +185,8 @@ class TransformationsHelper:
 
         return modified_image_array
 
-
-
     def apply_transformations(self, image_path, transformations, output):
+        print(output)
         if not os.path.exists(output):
             os.makedirs(output)
 
@@ -208,47 +206,69 @@ class TransformationsHelper:
             'glare': (0, 10)  # Example values, adjust as needed
         }
 
-        for transformation in transformations:
+        def apply_transformation(transformation):
             transformation_label = transformation[0]
-            intensity = int(transformation[1])
+            accuracy = int(transformation[1])
 
             # Check if the transformation is valid
             if transformation_label not in valid_ranges:
                 print("Unknown transformation:", transformation_label)
-                continue
+                return None
 
-            # Map the intensity parameter from 1-100 to the valid value range
+            transformed_images = []
             min_value, max_value = valid_ranges[transformation_label]
-            mapped_intensity = min_value + (max_value - min_value) * (intensity - 1) / 99
+            intensity_values = []
+            if accuracy == 1:
+                intensity_values.append((min_value + max_value) / 2)
+            else:
+                intensity_values = np.linspace(min_value, max_value, accuracy).tolist()
+            for mapped_intensity in intensity_values:
+                print(mapped_intensity)
+                # Map the intensity parameter from 1-10 to the valid value range
 
-            print(mapped_intensity)
+                transformed_image = image.copy()
 
-            transformed_image = image.copy()
+                if transformation_label == 'noise':
+                    transformed_image = self.add_noise(transformed_image, mapped_intensity)
+                elif transformation_label == 'contrast':
+                    transformed_image = self.adjust_imagecontrast(transformed_image, mapped_intensity)
+                elif transformation_label == 'brightness':
+                    transformed_image = self.adjust_imagebrightness(transformed_image, mapped_intensity)
+                elif transformation_label == 'sharpness':
+                    transformed_image = self.adjust_imagesharpness(transformed_image, mapped_intensity)
+                elif transformation_label == 'smoke':
+                    transformed_image = self.add_smoke(transformed_image, mapped_intensity)
+                elif transformation_label == 'glare':
+                    transformed_image = self.add_custom_lens_flare(transformed_image, mapped_intensity)
 
-            if transformation_label == 'noise':
-                transformed_image = self.add_noise(transformed_image,mapped_intensity)
-            elif transformation_label == 'contrast':
-                transformed_image = self.adjust_imagecontrast(transformed_image, mapped_intensity)
-            elif transformation_label == 'brightness':
-                transformed_image = self.adjust_imagebrightness(transformed_image, mapped_intensity)
-            elif transformation_label == 'sharpness':
-                transformed_image = self.adjust_imagesharpness(transformed_image, mapped_intensity)
-            elif transformation_label == 'smoke':
-                transformed_image = self.add_smoke(transformed_image,mapped_intensity)
-            elif transformation_label == 'glare':
-                transformed_image = self.add_custom_lens_flare(transformed_image, mapped_intensity)
+                transformed_images.append(transformed_image)
+                transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))
 
-            transformed_images.append(transformed_image)
-            transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))
+                # Save the transformed image with a formatted filename
+                image_name = os.path.basename(image_path)
+                image_extension = os.path.splitext(image_path)[1]
 
-            # Save the transformed image with a formatted filename
-            image_name = os.path.basename(image_path)
-            image_extension = os.path.splitext(image_path)[1]
+                index = intensity_values.index(mapped_intensity)
+                transformed_image_name = "{}-{}-{}-{}".format(
+                    os.path.splitext(image_name)[0],
+                    transformation_label,
+                    index,
+                    image_extension
+                )
+                transformed_image_path = os.path.join(output, transformed_image_name)
 
-            transformed_image_name = "{}-{}{}".format(os.path.splitext(image_name)[0], transformation_label, image_extension)
-            transformed_image_path = os.path.join(output, transformed_image_name)
+                transformed_image_pil.save(transformed_image_path)
+            return transformed_images
 
-            transformed_image_pil.save(transformed_image_path)
+        # Use concurrent.futures.ThreadPoolExecutor to parallelize the transformation application
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            # Submit the transformation tasks to the executor
+            transformation_results = executor.map(apply_transformation, transformations)
+
+            # Collect the results
+            for result in transformation_results:
+                if result is not None:
+                    transformed_images.extend(result)
 
         return transformed_images
 

@@ -43,13 +43,11 @@ class Controller:
         return self.storage_helper.get_result_score(path)
 
     def run_tests_for_container(self, container, images, transformations):
-        print("backend:")
-        print(transformations)
         # This makes sure I can use the Users container name as file path
         # kind of unnecessarily dangerous
-        safe_name = re.sub(r'[\\/*?:"<>|]', '', container).strip().strip('.')
-        print("Here is a:"+safe_name)
-        output = "./images/" + safe_name + "/transformations/"
+
+        output = str(self.storage_helper.get_dockerpath(container))+"/transformations/"
+        print("output:"+str(output))
         self.transformations_helper.apply_transformations(images, transformations, output)
         # Implementation for running tests for a container
 
