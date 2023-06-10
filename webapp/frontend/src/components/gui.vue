@@ -232,7 +232,7 @@ export default {
 .sidebar {
   width: 20%;
   background-color: #333333;
-  padding: 20px;
+  //padding: 20px;
 }
 
 .docker-list {
