@@ -27,6 +27,9 @@
         <div v-else>
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
+          <label for="fileInput">Choose a Test Image:</label>
+          <input type="file" @change="setTestImage">
+          <br><br>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
@@ -46,7 +49,7 @@
                 </div>
               </div>
             </div>
-            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive||isTransformingImages }"
+            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''}"
                     @click="runTests">Run Tests
             </button>
             <div v-if="isTransformingImages">
@@ -83,6 +86,7 @@ export default {
       checkboxes: [], // Array to store the selected checkbox labels
       sliderValues: [], // Add sliderValues property
       defaultSliderValue: 1,
+      testImage: "",
     };
   },
   created() {
@@ -91,6 +95,13 @@ export default {
     this.loadTransformationLabels();
   },
   methods: {
+    async setTestImage(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.testImage = URL.createObjectURL(file);
+      }
+    }
+    ,
     async loadTransformationLabels() {
       try {
         const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
@@ -101,21 +112,26 @@ export default {
         console.error(error);
       }
 
-    },
+    }
+    ,
     initializeCheckboxes() {
       this.checkboxes = Array.from({length: this.labels.length}, () => 0);
-    },
+    }
+    ,
     initializeSliderValues() {
       this.sliderValues = Array.from({length: this.labels.length}, () => this.defaultSliderValue);
-    },
+    }
+    ,
     updateCheckboxes(value, index) {
       this.checkboxes[index] = value;
-    },
+    }
+    ,
     updateSliderValue(value, index) {
       // Update the slider value in the sliderValues array
       this.sliderValues[index] = value;
       //this.updateRunButtonStatus();
-    },
+    }
+    ,
     async loadDockerContainers() {
       try {
         const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
@@ -125,15 +141,18 @@ export default {
       } catch (error) {
         console.error(error);
       }
-    },
+    }
+    ,
     selectContainer(container) {
       this.selectedContainer = container;
       console.log(this.selectedContainer)
       this.loadTestResults(container);
-    },
+    }
+    ,
     findNameForContainer(container_id) {
       return this.dockerList.find(arr => arr[1] === container_id)[0];
-    },
+    }
+    ,
     async loadTestResults(container) {
       // Implement your logic to load test results based on the selected container
       const response = await this.$axios.post('/api/load-container-results', {
@@ -148,7 +167,8 @@ export default {
       }
 
 
-    },
+    }
+    ,
     async runTests() {
       try {
         //This takes the indexes of labels and sliderValues only when the corresponding checkbox is checked
@@ -162,7 +182,7 @@ export default {
         const containerName = this.selectedContainer;
         this.isTransformingImages = true;
         const response = await this.$axios.post('/api/run-tests', {
-          image_path: 'storage/Assets/website.png', // Replace with the actual image path value
+          image_path: this.testImage, // Replace with the actual image path value
           transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
@@ -175,7 +195,8 @@ export default {
       } catch (error) {
         console.error(error);
       }
-    },
+    }
+    ,
     async openAddDockerDialog() {
       try {
         // Open file dialog to select a .tar file
@@ -220,7 +241,8 @@ export default {
       } catch (error) {
         console.error(error);
       }
-    },
+    }
+    ,
   },
   computed: {
     isRunButtonActive() {
