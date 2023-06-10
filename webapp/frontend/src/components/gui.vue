@@ -27,7 +27,11 @@
         <div v-else>
           <div class="no-results">No results present for {{ selectedContainer[1] }}. Run the Tests below!</div>
           <div v-if="labels.length > 0">
-            <div class="title">Parameters</div>
+            <div class="title-container">
+              <div class="checkbox-title">Parameters</div>
+              <div class="slider-title">Accuracy</div>
+            </div>
+
             <div v-for="(label, index) in labels" :key="index">
               <div class="checkbox-container">
                 <div class="checkbox-label">
@@ -37,13 +41,12 @@
                 </div>
                 <div class="slider-container">
                   <input type="range" min="1" max="100" v-model="sliderValues[index]"
-                         @input="updateSliderValue($event.target.value, index)"/></div>
+                         @input="updateSliderValue($event.target.value, index)"/>
+                </div>
               </div>
-
             </div>
             <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests
             </button>
-
           </div>
         </div>
       </div>
@@ -199,7 +202,7 @@ export default {
 </script>
 <style scoped>
 .docker-item {
-  color: #ffffff; /* Change the text color to white */
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,7 +231,7 @@ export default {
 
 .sidebar {
   width: 20%;
-  background-color: #333333; /* Change the sidebar background color to dark gray */
+  background-color: #333333;
   padding: 20px;
 }
 
@@ -258,7 +261,7 @@ export default {
 .run-tests-button {
   padding: 10px 20px;
   background-color: #007bff;
-  color: #ffffff; /* Change the text color of the button to white */
+  color: #ffffff;
   border: none;
   cursor: pointer;
 }
@@ -269,7 +272,7 @@ export default {
   right: 20px;
   padding: 10px 20px;
   background-color: #007bff;
-  color: #ffffff; /* Change the text color of the button to white */
+  color: #ffffff;
   border: none;
   cursor: pointer;
 }
@@ -282,22 +285,44 @@ export default {
 .checkbox-container {
   display: flex;
   align-items: center;
-  margin-bottom: 8px; /* Add margin-bottom for vertical spacing */
+  margin-bottom: 8px;
 }
 
 .checkbox-label {
   display: flex;
   align-items: center;
-  flex: 1; /* Let the checkbox and label occupy available space */
+  flex: 1;
 }
 
 .slider-container {
-  flex: 1; /* Let the slider occupy available space */
-  margin-left: 8px; /* Add margin-left for spacing between checkbox-label and slider */
+  flex: 1;
+  margin-left: 8px;
+}
+
+.title-container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.checkbox-title,
+.slider-title {
+  color:blue;
+  flex: 1;
+  font-weight: bold;
+}
+
+.checkbox-title {
+  flex: 1;
+}
+
+.slider-title {
+  flex: 1;
+  text-align: right;
 }
 
 input[type="range"] {
-  width: 100%; /* Set the width to occupy the full space within slider-container */
+  width: 100%;
 }
 
 input[type="checkbox"] {
