@@ -192,6 +192,7 @@ class TransformationsHelper:
 
         # Load the image if `image` parameter is a path
         if isinstance(image_path, str):
+            print("path:"+image_path)
             image = io.imread(image_path)
 
         transformed_images = []
