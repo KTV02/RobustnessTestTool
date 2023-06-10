@@ -27,6 +27,7 @@
         <div v-else>
           <div class="no-results">No results present for {{ selectedContainer[1] }}. Run the Tests below!</div>
           <div v-if="labels.length > 0">
+            <div class="title">Parameters</div>
             <div v-for="(label, index) in labels" :key="index">
               <div class="checkbox-container">
                 <div class="checkbox-label">
@@ -38,6 +39,7 @@
                   <input type="range" min="1" max="100" v-model="sliderValues[index]"
                          @input="updateSliderValue($event.target.value, index)"/></div>
               </div>
+
             </div>
             <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive }" @click="runTests">Run Tests
             </button>
@@ -57,7 +59,7 @@
 export default {
   data() {
     return {
-      dockerList: [], // List of Docker containers
+      dockerList: [], // 2d List of Docker containers [0] is name and [1] is unique id
       selectedContainer: null, // Selected Docker container
       testResultsAvailable: false, // Boolean indicating if test results are available
       dockerListLoaded: false,
@@ -171,11 +173,12 @@ export default {
 
             // Check the response for success and update the dockerList
             if (response.data.message === 'Docker container added successfully') {
-              this.loadDockerContainers();
+              await this.loadDockerContainers();
             } else {
               console.error(response.data.message);
             }
           } catch (error) {
+            alert("Adding container failed!")
             console.error(error);
           }
         });

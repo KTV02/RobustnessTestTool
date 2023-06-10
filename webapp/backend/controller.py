@@ -1,23 +1,24 @@
 import os
+import re
 import time
 from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
 from environment import Environment
+
 
 class Controller:
     def __init__(self):
         # Initialize the necessary helpers
         self.environment = Environment()
         self.transformations_helper = TransformationsHelper(self.environment)
-        self.storage_helper = StorageHelper(self.environment,self.transformations_helper)
-
+        self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
         return results
 
     def save_user_tar(self, tar_file):
-        temp_path = self.environment.get_tar_dir()+"temp"+str(int(time.time()))+".tar"
+        temp_path = self.environment.get_tar_dir() + "temp" + str(int(time.time())) + ".tar"
         # save tar file locally
         tar_file.save(temp_path)
         return temp_path
@@ -40,7 +41,11 @@ class Controller:
     def run_tests_for_container(self, container, images, transformations):
         print("backend:")
         print(transformations)
-        output = "./images/ " + container + "/transformations/"
+        # This makes sure I can use the Users container name as file path
+        # kind of unnecessarily dangerous
+        safe_name = re.sub(r'[\\/*?:"<>|]', '', container).strip().strip('.')
+        print("Here is a:"+safe_name)
+        output = "./images/" + safe_name + "/transformations/"
         self.transformations_helper.apply_transformations(images, transformations, output)
         # Implementation for running tests for a container
 

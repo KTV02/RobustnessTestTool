@@ -19,6 +19,7 @@ def add_docker_container():
     container_name = request.form['name']
 
     success, message = controller.store_container(tar_path,container_name)
+    print("Registration: "+message)
     if success:
         return jsonify({'message': 'Docker container added successfully'})
     else:
