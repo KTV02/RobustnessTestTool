@@ -11,8 +11,8 @@ def get_current_datetime():
 
 
 class StorageHelper:
-    def __init__(self, environment,transformations_helper):
-        self.environment=environment
+    def __init__(self, environment, transformations_helper):
+        self.environment = environment
         self.create_results_database(transformations_helper.get_available_transformations())
         self.create_container_database()
         self.create_dir(self.environment.get_tar_dir())
@@ -23,7 +23,7 @@ class StorageHelper:
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS docker_containers
-                     (name TEXT, path TEXT, date_added TEXT, size INTEGER)''')
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT, path TEXT, date_added TEXT, size INTEGER)''')
         conn.commit()
         conn.close()
 
@@ -34,11 +34,10 @@ class StorageHelper:
         else:
             print(f"Directory already exists: {dir_path}")
 
-
     def load_docker_containers(self):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
-        c.execute("SELECT name,path FROM docker_containers")
+        c.execute("SELECT name,id FROM docker_containers")
         results = c.fetchall()
         conn.close()
 
@@ -49,12 +48,13 @@ class StorageHelper:
         try:
             conn = sqlite3.connect(self.environment.get_database_file())
             c = conn.cursor()
-            c.execute("INSERT INTO docker_containers VALUES (?, ?, ?, ?)",
+            # Null Value muss man übergeben, damit DB sich um ID kümmert
+            c.execute("INSERT INTO docker_containers VALUES (NULL,?, ?, ?, ?)",
                       (name, extract_path, get_current_datetime(), size))
             conn.commit()
             conn.close()
             return True, f"Container '{name}' successfully registered"
-        except:
+        except Exception as e:
             return False, f"Container failed to register: {str(e)}"
 
     def create_results_database(self, transformations):
