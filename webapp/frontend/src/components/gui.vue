@@ -104,6 +104,7 @@ export default {
       transformSuccess: false,
       isBuildingDocker: false,
       buildingSuccess: false,
+      tarDataUrl: "",
     };
   },
   created() {
@@ -277,11 +278,19 @@ export default {
             formData.append('file', file);
             formData.append('name', containerName);
 
-            // Send request to add the Docker container
-            const response = await this.$axios.post('/api/add-docker-container', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                this.tarDataUrl = reader.result;
+                console.log("Tar data URL: " + this.tarDataUrl);
+              };
+              reader.readAsDataURL(file);
+            }
+
+
+            const response = await this.$axios.post('api/add-docker-container', {
+              tarfile: this.tarDataUrl,
+              container_name: containerName,
             });
 
             // Check the response for success and update the dockerList
