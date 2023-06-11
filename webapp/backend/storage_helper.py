@@ -1,3 +1,5 @@
+import base64
+import re
 import sqlite3
 import os
 import datetime
@@ -34,7 +36,7 @@ class StorageHelper:
         c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='results'")
         table_exists = c.fetchone()
 
-        query=""
+        query = ""
         if not table_exists:
             # Tabelle existiert nicht, erstelle sie vollständig
 
@@ -118,9 +120,9 @@ class StorageHelper:
         c = conn.cursor()
         c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
         result = c.fetchone()
-        dockerpath= result[0]
+        dockerpath = result[0]
         if "\\" in dockerpath:
-            dockerpath=dockerpath.replace("\\","/")
+            dockerpath = dockerpath.replace("\\", "/")
         conn.close()
         return dockerpath
 
@@ -141,26 +143,92 @@ class StorageHelper:
         columns = [column[1] for column in cursor.fetchall()]
         return columns
 
-    def store_docker(self, tar_path):
-        if tar_path:
-            if self.is_tar_file(tar_path):
-                size = os.path.getsize(tar_path)
-                success, message, extract_path = self.extract_docker_image(tar_path)
-                return success, message, extract_path, size
-            else:
-                return False, "No .tar file detected", None, None
-
-    def extract_docker_image(self, file_path):
-        # Ordner in den .tar entpackt wird hat einen einzigartigen Namen -> getrennt von Namen des Containers
+    def store_docker(self, tar_url):
         unique_name = self.generate_unique_name()
         extract_path = os.path.join(self.environment.get_images_folder(), unique_name)
+        self.create_dir(extract_path)
+        extract_path=extract_path+"/"
+        print("what: "+str(extract_path))
+        tar= self.save_tar_file(tar_url, extract_path)
+        if tar:
+            if self.is_tar_file(tar):
+                size = os.path.getsize(tar)
+                return True, "Tar file saved successfully", extract_path, size
+            else:
+                return False, "No .tar file detected", False, False
 
-        try:
-            with tarfile.open(file_path, "r") as tar:
-                tar.extractall(extract_path)
-            return True, 'f"Docker image extracted to: {extract_path}"', extract_path
-        except tarfile.TarError as e:
-            return False, f"Failed to extract Docker image: {str(e)}", None
+    def save_tar_file(self, url, path):
+
+        # Extract the file type and data from the data URL
+        match = re.search(r'^data:(.*?);(.*?),(.*)$', url)
+        mime_type = match.group(1)
+        encoding = match.group(2)
+        data = match.group(3)
+
+        extension = ""
+        # Determine the file extension based on the MIME type
+        if mime_type == 'application/x-tar':
+            extension = '.tar'
+        else:
+            return "Not a tar file: " + mime_type
+
+        # Generate a unique file name
+        filename = 'docker' + extension
+        filename = path + filename
+        print("endfilename: "+str(filename))
+
+        # Save the file to disk
+        with open(filename, 'wb') as f:
+            if encoding == 'base64':
+                f.write(base64.b64decode(data))
+            else:
+                return "Encoding not supported: " + encoding
+        return filename
+
+    def save_test_image(self, data_url, container_name):
+        dockerpath = self.get_dockerpath(container_name)
+        output = dockerpath + self.environment.get_transformation_folder()
+
+        # Extract the file type and data from the data URL
+        match = re.search(r'^data:(.*?);(.*?),(.*)$', data_url)
+        mime_type = match.group(1)
+        encoding = match.group(2)
+        data = match.group(3)
+
+        extension = ""
+        # Determine the file extension based on the MIME type
+        if mime_type == 'image/jpeg':
+            extension = 'jpg'
+        elif mime_type == 'image/png':
+            extension = 'png'
+        elif mime_type == 'image/jpg':
+            extension = 'jpg'
+        else:
+            return "Not a supported Filetype: " + mime_type
+
+        # Generate a unique file name
+        filename = 'baseimage.' + extension
+        filename = output + filename
+
+        # Save the file to disk
+        with open(filename, 'wb') as f:
+            if encoding == 'base64':
+                f.write(base64.b64decode(data))
+            else:
+                return "Encoding not supported: " + encoding
+        return filename
+
+    # def extract_docker_image(self, file_path):
+    #     # Ordner in den .tar entpackt wird hat einen einzigartigen Namen -> getrennt von Namen des Containers
+    #     unique_name = self.generate_unique_name()
+    #     extract_path = os.path.join(self.environment.get_images_folder(), unique_name)
+    #
+    #     try:
+    #         with tarfile.open(file_path, "r") as tar:
+    #             tar.extractall(extract_path)
+    #         return True, 'f"Docker image extracted to: {extract_path}"', extract_path
+    #     except tarfile.TarError as e:
+    #         return False, f"Failed to extract Docker image: {str(e)}", None
 
     def is_tar_file(self, file_path):
         return tarfile.is_tarfile(file_path)

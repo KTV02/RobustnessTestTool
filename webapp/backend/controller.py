@@ -60,37 +60,7 @@ class Controller:
         pass
 
     def save_test_image(self, data_url, container_name):
-        dockerpath = self.storage_helper.get_dockerpath(container_name)
-        output = dockerpath + self.environment.get_transformation_folder()
-
-        # Extract the file type and data from the data URL
-        match = re.search(r'^data:(.*?);(.*?),(.*)$', data_url)
-        mime_type = match.group(1)
-        encoding = match.group(2)
-        data = match.group(3)
-
-        extension = ""
-        # Determine the file extension based on the MIME type
-        if mime_type == 'image/jpeg':
-            extension = 'jpg'
-        elif mime_type == 'image/png':
-            extension = 'png'
-        elif mime_type == 'image/jpg':
-            extension = 'jpg'
-        else:
-            return "Not a supported Filetype: " + mime_type
-
-        # Generate a unique file name
-        filename = 'baseimage.' + extension
-        filename = output + filename
-
-        # Save the file to disk
-        with open(filename, 'wb') as f:
-            if encoding == 'base64':
-                f.write(base64.b64decode(data))
-            else:
-                return "Encoding not supported: " + encoding
-        return filename
+        self.storage_helper.save_test_image(data_url,container_name)
 
     def build_docker(self, container_name):
         pass

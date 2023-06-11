@@ -18,8 +18,8 @@ def get_docker_containers():
 
 @app.route('/api/add-docker-container', methods=['POST'])
 def add_docker_container():
-    tar_path = controller.save_user_tar(request.files['file'])
-    container_name = request.form['name']
+    tar_path = request.json.get('tarfile')
+    container_name = request.json.get('container_name')
 
     success, message = controller.store_container(tar_path, container_name)
     print("Registration: " + message)
