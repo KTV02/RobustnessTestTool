@@ -1,3 +1,4 @@
+import base64
 import os
 import re
 import time
@@ -17,7 +18,7 @@ class Controller:
         results = self.storage_helper.load_docker_containers()
         return results
 
-    def load_container_results(self,container_id):
+    def load_container_results(self, container_id):
         result = self.storage_helper.get_result_score(container_id)
         return result
 
@@ -42,18 +43,57 @@ class Controller:
     def get_result_score(self, path):
         return self.storage_helper.get_result_score(path)
 
-    def run_tests_for_container(self, container, images, transformations):
-        # This makes sure I can use the Users container name as file path
-        # kind of unnecessarily dangerous
-
-        output = str(self.storage_helper.get_dockerpath(container))+"/transformations/"
-        print("output:"+str(output))
-        self.transformations_helper.apply_transformations(images, transformations, output)
-        # Implementation for running tests for a container
+    def transform_images(self, container, images, transformations):
+        output = str(self.storage_helper.get_dockerpath(container)) + self.environment.get_transformation_folder()
+        print("output:" + str(output))
+        answer = self.transformations_helper.apply_transformations(images, transformations, output)
+        if answer != "False":
+            return "True"
+        else:
+            return answer
 
     # returns an Array of labels of the available transformations
     def get_available_transformations(self):
         return self.transformations_helper.get_available_transformations()
 
     def exit(self):
+        pass
+
+    def save_test_image(self, data_url, container_name):
+        dockerpath = self.storage_helper.get_dockerpath(container_name)
+        output = dockerpath + self.environment.get_transformation_folder()
+
+        # Extract the file type and data from the data URL
+        match = re.search(r'^data:(.*?);(.*?),(.*)$', data_url)
+        mime_type = match.group(1)
+        encoding = match.group(2)
+        data = match.group(3)
+
+        extension = ""
+        # Determine the file extension based on the MIME type
+        if mime_type == 'image/jpeg':
+            extension = 'jpg'
+        elif mime_type == 'image/png':
+            extension = 'png'
+        elif mime_type == 'image/jpg':
+            extension = 'jpg'
+        else:
+            return "Not a supported Filetype: " + mime_type
+
+        # Generate a unique file name
+        filename = 'baseimage.' + extension
+        filename = output + filename
+
+        # Save the file to disk
+        with open(filename, 'wb') as f:
+            if encoding == 'base64':
+                f.write(base64.b64decode(data))
+            else:
+                return "Encoding not supported: " + encoding
+        return filename
+
+    def build_docker(self, container_name):
+        pass
+
+    def run_tests(self, container_name):
         pass

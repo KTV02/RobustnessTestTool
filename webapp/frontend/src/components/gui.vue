@@ -28,7 +28,7 @@
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
           <label for="fileInput">Choose a Test Image:</label>
-          <input type="file" @change="setTestImage">
+          <input type="file" accept=".png, .jpg, .jpeg" @change="setTestImage">
           <br><br>
           <div v-if="labels.length > 0">
             <div class="title-container">
@@ -49,13 +49,26 @@
                 </div>
               </div>
             </div>
-            <button class="run-tests-button" :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''}"
+            <button class="run-tests-button"
+                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''}"
                     @click="runTests">Run Tests
             </button>
             <div v-if="isTransformingImages">
               <p>Transforming Testdata...</p>
             </div>
-            <loader v-if="isTransformingImages"/>
+            <div v-if="transformSuccess">
+              <p>Transforming Testdata &#x2705;</p>
+            </div>
+            <div v-if="isBuildingDocker">
+              <p>Building Docker...</p>
+            </div>
+            <div v-if="buildingSuccess">
+              <p>Building Docker &#x2705;</p>
+            </div>
+            <div v-if="isRunningTests">
+              <p>Running Tests...</p>
+            </div>
+            <loader v-if="isTransformingImages|| isBuildingDocker || isRunningTests"/>
           </div>
         </div>
       </div>
@@ -87,6 +100,10 @@ export default {
       sliderValues: [], // Add sliderValues property
       defaultSliderValue: 1,
       testImage: "",
+      isRunningTests: false,
+      transformSuccess: false,
+      isBuildingDocker: false,
+      buildingSuccess: false,
     };
   },
   created() {
@@ -98,7 +115,18 @@ export default {
     async setTestImage(event) {
       const file = event.target.files[0];
       if (file) {
-        this.testImage = URL.createObjectURL(file);
+        // Create a new FileReader instance
+        const reader = new FileReader();
+
+        // Set up the onload event handler
+        reader.onload = () => {
+          // Access the data URL result
+          this.testImage = reader.result;
+          console.log("Testimage: " + this.testImage)
+        };
+
+        // Read the file and convert it to a data URL
+        reader.readAsDataURL(file);
       }
     }
     ,
@@ -158,9 +186,9 @@ export default {
       const response = await this.$axios.post('/api/load-container-results', {
         container: container,
       });
-      if (response.status = 200 && response.data == null) {
+      if (response.status === 200 && response.data == null) {
         this.testResultsAvailable = false;
-      } else if (reponse.status = 200 && response.data != null) {
+      } else if (response.status === 200 && response.data != null) {
         this.testResultsAvailable = true;
       } else {
         console.error(response)
@@ -178,20 +206,52 @@ export default {
           }
           return result;
         }, []);
-
         const containerName = this.selectedContainer;
+        const testImageUrl = this.testImage
+
+        //Transform Testimage
         this.isTransformingImages = true;
-        const response = await this.$axios.post('/api/run-tests', {
-          image_path: this.testImage, // Replace with the actual image path value
+        const transformResponse = await this.$axios.post('/api/transform-images', {
+          image_path: testImageUrl, // Replace with the actual image path value
           transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
         this.isTransformingImages = false;
-        // Handle the response as per your requirements
-        // Update the testResultsAvailable, score, and labels data properties based on the received data
-        this.testResultsAvailable = true;
-        this.score = response.data.score;
-        // Update other necessary data based on the received response
+        console.log(transformResponse.status);
+        if (transformResponse.status === 200) {
+          this.transformSuccess = true;
+          this.isBuildingDocker = true;
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          const buildResponse = await this.$axios.post('/api/build-docker', {
+            container_name: containerName,
+          });
+          this.isBuildingDocker = false;
+          if (buildResponse.status === 200) {
+            this.buildingSuccess = true;
+            this.isRunningTests = true;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            const testResponse = await this.$axios.post('/api/run-tests', {
+              container_name: containerName,
+            });
+            this.isRunningTests = false;
+            if (testResponse.status === 200) {
+              this.testResultsAvailable = true;
+              this.score = testResponse.data.score;
+              // Update other necessary data based on the received response
+
+            } else {
+              alert("An Error occurred while running Tests")
+            }
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+          } else {
+            alert("An Error occurred while building docker container")
+          }
+        } else {
+          alert("An Error occurred while transforming Images")
+        }
+
+
       } catch (error) {
         console.error(error);
       }
