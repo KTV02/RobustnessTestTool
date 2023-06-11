@@ -9,6 +9,10 @@ class Environment:
         self.tar_dir = "storage/tar/"
         self.assets = "storage/Assets/"
         self.images_folder = "images"
+        self.transformation_folder="/transformations/"
+
+    def get_transformation_folder(self):
+        return self.transformation_folder
 
     def get_images_folder(self):
         return self.images_folder
