@@ -273,25 +273,20 @@ export default {
           if (!containerName) return;
 
           try {
-            // Create form data to send the file and container name to the backend
+            // Create a FormData object and append the file to it
             const formData = new FormData();
-            formData.append('file', file);
-            formData.append('name', containerName);
+            formData.append('tarfile', file);
 
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = () => {
-                this.tarDataUrl = reader.result;
-                console.log("Tar data URL: " + this.tarDataUrl);
-              };
-              reader.readAsDataURL(file);
-            }
-
-
-            const response = await this.$axios.post('api/add-docker-container', {
-              tarfile: this.tarDataUrl,
-              container_name: containerName,
+            // Append the container name to the FormData object
+            formData.append('container_name', containerName);
+            console.log(formData)
+            // Send the FormData object to the server using Axios
+            const response = await this.$axios.post('/api/add-docker-container', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data',
+              },
             });
+            // Handle the response
 
             // Check the response for success and update the dockerList
             if (response.data.message === 'Docker container added successfully') {
