@@ -1,5 +1,7 @@
 import json
 import subprocess
+import time
+
 import docker
 import tarfile
 
@@ -24,6 +26,7 @@ class DockerHelper:
         print("image name:"+image_name)
         # Initialize Docker client
         client = docker.from_env()
+        time.sleep(5)
 
         # Check if the image exists
         image_exists = any(image_name in image.tags for image in client.images.list())

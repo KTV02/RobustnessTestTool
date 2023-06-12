@@ -67,6 +67,7 @@ class Controller:
         return self.storage_helper.save_test_image(data_url, container_name)
 
     def build_docker(self, container_name):
+        time.sleep(10)
         pass
 
     def run_tests(self, container_name):
