@@ -151,39 +151,47 @@ class StorageHelper:
         print("what: "+str(extract_path))
         tar= self.save_tar_file(tar_url, extract_path)
         if tar:
-            if self.is_tar_file(tar):
-                size = os.path.getsize(tar)
+            #EIGENTLICH CHECKEN OB TARFILE:::: TEMP
+            #if self.is_tar_file(tar):
+            if True:
+                #size = os.path.getsize(tar)
+                size=1
                 return True, "Tar file saved successfully", extract_path, size
             else:
                 return False, "No .tar file detected", False, False
 
-    def save_tar_file(self, url, path):
+    def save_tar_file(self, file, path):
+        tarpath = path+"tarfile.tar"
+        print("strurl"+str(tarpath))
+        #Eigentlich wird tarfile auf server gespeichert TEMPORÄR HIER AUSKOMMENTIERT
+        #file.save(tarpath)
 
-        # Extract the file type and data from the data URL
-        match = re.search(r'^data:(.*?);(.*?),(.*)$', url)
-        mime_type = match.group(1)
-        encoding = match.group(2)
-        data = match.group(3)
 
-        extension = ""
-        # Determine the file extension based on the MIME type
-        if mime_type == 'application/x-tar':
-            extension = '.tar'
-        else:
-            return "Not a tar file: " + mime_type
-
-        # Generate a unique file name
-        filename = 'docker' + extension
-        filename = path + filename
-        print("endfilename: "+str(filename))
-
-        # Save the file to disk
-        with open(filename, 'wb') as f:
-            if encoding == 'base64':
-                f.write(base64.b64decode(data))
-            else:
-                return "Encoding not supported: " + encoding
-        return filename
+        # # Extract the file type and data from the data URL
+        # match = re.search(r'^data:(.*?);(.*?),(.*)$', url)
+        # mime_type = match.group(1)
+        # encoding = match.group(2)
+        # data = match.group(3)
+        #
+        # extension = ""
+        # # Determine the file extension based on the MIME type
+        # if mime_type == 'application/x-tar':
+        #     extension = '.tar'
+        # else:
+        #     return "Not a tar file: " + mime_type
+        #
+        # # Generate a unique file name
+        # filename = 'docker' + extension
+        # filename = path + filename
+        # print("endfilename: "+str(filename))
+        #
+        # # Save the file to disk
+        # with open(filename, 'wb') as f:
+        #     if encoding == 'base64':
+        #         f.write(base64.b64decode(data))
+        #     else:
+        #         return "Encoding not supported: " + encoding
+        return tarpath
 
     def save_test_image(self, data_url, container_name):
         dockerpath = self.get_dockerpath(container_name)
