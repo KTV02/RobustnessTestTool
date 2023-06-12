@@ -194,6 +194,8 @@ class TransformationsHelper:
         if isinstance(image_path, str):
             print("path:"+image_path)
             image = io.imread(image_path)
+        else:
+            image = None
 
         transformed_images = []
 
@@ -208,6 +210,7 @@ class TransformationsHelper:
         }
 
         def apply_transformation(transformation):
+            nonlocal image
             transformation_label = transformation[0]
             accuracy = int(transformation[1])
 

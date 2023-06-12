@@ -1,14 +1,15 @@
 import json
 import subprocess
 import docker
+import tarfile
 
 
 class DockerHelper:
 
     # check if the image of the tarfile is already loaded
-    def is_already_present(self, tarfile):
+    def is_already_present(self, tarfilepath):
         # Open the tar file in read mode
-        with tarfile.open(tarfile, 'r') as tar:
+        with tarfile.open(tarfilepath, 'r') as tar:
             # Check if the manifest.json file is present in the tar file
             if "manifest.json" in tar.getnames():
                 # Extract the manifest.json file from the tar file
