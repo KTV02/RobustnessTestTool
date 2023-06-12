@@ -5,6 +5,7 @@ import time
 from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
 from environment import Environment
+from docker_helper import DockerHelper
 
 
 class Controller:
@@ -13,6 +14,7 @@ class Controller:
         self.environment = Environment()
         self.transformations_helper = TransformationsHelper(self.environment)
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
+        self.docker_helper = DockerHelper()
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -46,6 +48,7 @@ class Controller:
     def transform_images(self, container, images, transformations):
         output = str(self.storage_helper.get_dockerpath(container)) + self.environment.get_transformation_folder()
         print("output:" + str(output))
+        print("imagepath:"+str(images))
         answer = self.transformations_helper.apply_transformations(images, transformations, output)
         if answer != "False":
             return "True"
@@ -60,10 +63,16 @@ class Controller:
         pass
 
     def save_test_image(self, data_url, container_name):
-        self.storage_helper.save_test_image(data_url,container_name)
+        self.storage_helper.create_dir(self.storage_helper.get_dockerpath(container_name)+self.environment.get_transformation_folder())
+        return self.storage_helper.save_test_image(data_url, container_name)
 
     def build_docker(self, container_name):
         pass
 
     def run_tests(self, container_name):
         pass
+
+    def image_exists(self, container_name):
+        # eigentlich hier tarfile path getten über storagehelper.getdockerpath
+        return self.docker_helper.is_already_present(
+            "C:\\Users\\lkrem\OneDrive\\Studium\\Bachelorarbeit\\RobustnessTestTool\\dockers\\Isensee_RobustMIS.tar")

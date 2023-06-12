@@ -65,6 +65,9 @@
             <div v-if="buildingSuccess">
               <p>Building Docker &#x2705;</p>
             </div>
+            <div v-if="imageAlreadyPresent">
+              <p>Docker Image already present on Server &#x2705;</p>
+            </div>
             <div v-if="isRunningTests">
               <p>Running Tests...</p>
             </div>
@@ -105,6 +108,7 @@ export default {
       isBuildingDocker: false,
       buildingSuccess: false,
       tarDataUrl: "",
+      imageAlreadyPresent:false,
     };
   },
   created() {
@@ -221,14 +225,25 @@ export default {
         console.log(transformResponse.status);
         if (transformResponse.status === 200) {
           this.transformSuccess = true;
-          this.isBuildingDocker = true;
-          await new Promise(resolve => setTimeout(resolve, 5000));
-          const buildResponse = await this.$axios.post('/api/build-docker', {
+
+          //check if image for tar already exists on server
+          const image_exists = await this.$axios.post('/api/image-exists', {
             container_name: containerName,
           });
-          this.isBuildingDocker = false;
-          if (buildResponse.status === 200) {
+          if (image_exists.data() === "False") {
+            this.isBuildingDocker = true;
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            const buildResponse = await this.$axios.post('/api/build-docker', {
+              container_name: containerName,
+            });
+            this.isBuildingDocker = false;
+            if (!(buildResponse.status === 200)) {
+              return false
+            }
             this.buildingSuccess = true;
+
+          } else if (image_exists.data() === "True") {
+            this.imageAlreadyPresent =true;
             this.isRunningTests = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
             const testResponse = await this.$axios.post('/api/run-tests', {
@@ -275,7 +290,10 @@ export default {
           try {
             // Create a FormData object and append the file to it
             const formData = new FormData();
-            formData.append('tarfile', file);
+
+            //TEMPORARY
+
+            //formData.append('tarfile', file);
 
             // Append the container name to the FormData object
             formData.append('container_name', containerName);
