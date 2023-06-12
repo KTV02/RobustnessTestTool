@@ -59,6 +59,9 @@
             <div v-if="transformSuccess">
               <p>Transforming Testdata &#x2705;</p>
             </div>
+            <div v-if="checkingImage">
+              <p>Checking if image already present...</p>
+            </div>
             <div v-if="isBuildingDocker">
               <p>Building Docker...</p>
             </div>
@@ -109,6 +112,7 @@ export default {
       buildingSuccess: false,
       tarDataUrl: "",
       imageAlreadyPresent:false,
+      checkingImage:false,
     };
   },
   created() {
@@ -226,11 +230,16 @@ export default {
         if (transformResponse.status === 200) {
           this.transformSuccess = true;
 
+          this.checkingImage=true;
           //check if image for tar already exists on server
           const image_exists = await this.$axios.post('/api/image-exists', {
             container_name: containerName,
           });
-          if (image_exists.data() === "False") {
+          this.checkingImage=false;
+          console.log(image_exists)
+          console.log(image_exists.data === "False")
+          if (image_exists.data === "False") {
+            console.log("Das war ja einfach")
             this.isBuildingDocker = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
             const buildResponse = await this.$axios.post('/api/build-docker', {
