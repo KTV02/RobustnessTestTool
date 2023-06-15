@@ -8,8 +8,10 @@ import tarfile
 
 class DockerHelper:
 
-    # check if the image of the tarfile is already loaded
-    def is_already_present(self, tarfilepath):
+    def __init__(self):
+        self.client = docker.from_env()
+
+    def get_image_name(self, tarfilepath):
         # Open the tar file in read mode
         with tarfile.open(tarfilepath, 'r') as tar:
             # Check if the manifest.json file is present in the tar file
@@ -22,14 +24,15 @@ class DockerHelper:
             manifest_content = json.load(file)
 
         # Extract the image name from the RepoTags field
-        image_name = manifest_content[0]['RepoTags'][0]
-        print("image name:"+image_name)
-        # Initialize Docker client
-        client = docker.from_env()
-        time.sleep(1)
+        return manifest_content[0]['RepoTags'][0]
+
+    # check if the image of the tarfile is already loaded
+    def is_already_present(self, tarfilepath):
+        image_name = self.get_image_name(tarfilepath)
+        print("image name:" + image_name)
         # Check if the image exists
-        image_exists = any(image_name in image.tags for image in client.images.list())
-        print("does image exist? "+str(image_exists))
+        image_exists = any(image_name in image.tags for image in self.client.images.list())
+        print("does image exist? " + str(image_exists))
         return image_exists
 
     def tar2image(self, tar_path):
@@ -47,4 +50,12 @@ class DockerHelper:
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
         cmd = f"docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
-        subprocess.run(cmd, shell=True, check=True)
+        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        output = result.stdout
+        print("Result: "+str(result)+" Output: "+str(output))
+
+    def build_docker(self, imagetar):
+        print("building docker")
+        with open(imagetar, 'rb') as f:
+            self.client.images.load(f)
+        print("done")

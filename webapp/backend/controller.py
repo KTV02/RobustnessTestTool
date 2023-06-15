@@ -48,7 +48,7 @@ class Controller:
     def transform_images(self, container, images, transformations):
         output = str(self.storage_helper.get_dockerpath(container)) + self.environment.get_transformation_folder()
         print("output:" + str(output))
-        print("imagepath:"+str(images))
+        print("imagepath:" + str(images))
         answer = self.transformations_helper.apply_transformations(images, transformations, output)
         if answer != "False":
             return "True"
@@ -63,20 +63,27 @@ class Controller:
         pass
 
     def save_test_image(self, data_url, container_name):
-        self.storage_helper.create_dir(self.storage_helper.get_dockerpath(container_name)+self.environment.get_transformation_folder())
+        self.storage_helper.create_dir(
+            self.storage_helper.get_dockerpath(container_name) + self.environment.get_transformation_folder())
         return self.storage_helper.save_test_image(data_url, container_name)
 
     def build_docker(self, container_name):
+        tarfile = self.storage_helper.tarfile_handler(container_name)
+        self.docker_helper.build_docker(tarfile)
         time.sleep(10)
         pass
 
     def run_tests(self, container_name):
+        dockerpath = self.storage_helper.get_dockerpath(container_name)
+        tarfile = self.storage_helper.tarfile_handler(container_name)
+        image = self.docker_helper.get_image_name(tarfile)
+        self.docker_helper.start_container(image, dockerpath + self.environment.get_transformation_folder(), dockerpath + "output/")
         pass
 
     def image_exists(self, container_name):
         # eigentlich hier tarfile path getten über storagehelper.getdockerpath
         tarfile = self.storage_helper.tarfile_handler(container_name)
-        print("finalpath"+str(tarfile))
+        print("finalpath" + str(tarfile))
         if not os.path.isfile(tarfile):
             return "Invalid tarfile"
         return self.docker_helper.is_already_present(tarfile)
