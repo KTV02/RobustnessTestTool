@@ -1,9 +1,12 @@
 import base64
+import glob
 import re
 import sqlite3
 import os
 import datetime
 import tarfile
+
+from werkzeug.utils import secure_filename
 
 
 def get_current_datetime():
@@ -147,25 +150,40 @@ class StorageHelper:
         unique_name = self.generate_unique_name()
         extract_path = os.path.join(self.environment.get_images_folder(), unique_name)
         self.create_dir(extract_path)
-        extract_path=extract_path+"/"
-        print("what: "+str(extract_path))
-        tar= self.save_tar_file(tar_url, extract_path)
+        extract_path = extract_path + "/"
+
+        tar = self.save_tar_file(tar_url, extract_path)
         if tar:
-            #EIGENTLICH CHECKEN OB TARFILE:::: TEMP
-            #if self.is_tar_file(tar):
+            # EIGENTLICH CHECKEN OB TARFILE:::: TEMP
+            # if self.is_tar_file(tar):
             if True:
-                #size = os.path.getsize(tar)
-                size=1
+                # size = os.path.getsize(tar)
+                size = 1
                 return True, "Tar file saved successfully", extract_path, size
             else:
                 return False, "No .tar file detected", False, False
 
     def save_tar_file(self, file, path):
-        tarpath = path+"tarfile.tar"
-        print("strurl"+str(tarpath))
-        #Eigentlich wird tarfile auf server gespeichert TEMPORÄR HIER AUSKOMMENTIERT
-        #file.save(tarpath)
 
+        print("strurl" + str(file))
+
+        # Check the file type based on the file extension
+        filename = secure_filename(file.filename)
+        _, extension = os.path.splitext(filename)
+        file_type = extension.lower()[1:]  # Remove the leading dot
+
+        if file_type == "txt":
+            tarpath = path + "tarfile.txt"
+            file.save(tarpath)
+            return str(tarpath) + " saved to " + str(tarpath)
+        elif file_type == "tar":
+            tarpath = path + "tarfile.tar"
+            file.save(tarpath)
+            return str(tarpath) + " saved to " + str(tarpath)
+        else:
+            return "Filetype not compatible"
+        # Eigentlich wird tarfile auf server gespeichert TEMPORÄR HIER AUSKOMMENTIERT
+        # file.save(tarpath)
 
         # # Extract the file type and data from the data URL
         # match = re.search(r'^data:(.*?);(.*?),(.*)$', url)
@@ -225,6 +243,26 @@ class StorageHelper:
             else:
                 return "Encoding not supported: " + encoding
         return filename
+
+    # can handle txt file and tar file
+    def tarfile_handler(self, container):
+        returnfile=""
+
+        path = self.get_dockerpath(container)
+        txtpath=path+"tarfile.txt"
+        tarpath=path+"tarfile.tar"
+        if os.path.isfile(txtpath):
+            with open(txtpath, 'r') as txt_file:
+                # Read the first line
+                destination_tar = txt_file.readline().strip()
+
+            # Check if is a valid filepath
+            if os.path.isfile(destination_tar) and destination_tar.endswith('.tar'):
+                returnfile = destination_tar
+        elif os.path.isfile(tarpath):
+            returnfile = tarpath
+        return returnfile
+
 
     # def extract_docker_image(self, file_path):
     #     # Ordner in den .tar entpackt wird hat einen einzigartigen Namen -> getrennt von Namen des Containers

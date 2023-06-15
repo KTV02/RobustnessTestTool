@@ -21,8 +21,8 @@ def add_docker_container():
     print("i was here")
     container_name = request.form['container_name']
     #TEMPORARY
-    #tar_path = request.files['tarfile']
-    tar_path=""
+    tar_path = request.files['tarfile']
+    #tar_path=""
 
     success, message = controller.store_container(tar_path, container_name)
     print("Registration: " + message)
