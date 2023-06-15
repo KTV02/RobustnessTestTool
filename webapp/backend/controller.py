@@ -75,5 +75,8 @@ class Controller:
 
     def image_exists(self, container_name):
         # eigentlich hier tarfile path getten über storagehelper.getdockerpath
-        return self.docker_helper.is_already_present(
-            "C:\\Users\\lkrem\OneDrive\\Studium\\Bachelorarbeit\\RobustnessTestTool\\dockers\\Isensee_RobustMIS.tar")
+        tarfile = self.storage_helper.tarfile_handler(container_name)
+        print("finalpath"+str(tarfile))
+        if not os.path.isfile(tarfile):
+            return "Invalid tarfile"
+        return self.docker_helper.is_already_present(tarfile)

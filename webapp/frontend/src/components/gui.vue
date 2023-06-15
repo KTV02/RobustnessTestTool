@@ -232,14 +232,12 @@ export default {
 
           this.checkingImage=true;
           //check if image for tar already exists on server
-          const image_exists = await this.$axios.post('/api/image-exists', {
+          const image_response = await this.$axios.post('/api/image-exists', {
             container_name: containerName,
           });
           this.checkingImage=false;
-          console.log(image_exists)
-          console.log(image_exists.data === "False")
-          if (image_exists.data === "False") {
-            console.log("Das war ja einfach")
+          console.log(image_response)
+          if (image_response.data === "False") {
             this.isBuildingDocker = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
             const buildResponse = await this.$axios.post('/api/build-docker', {
@@ -251,7 +249,7 @@ export default {
             }
             this.buildingSuccess = true;
 
-          } else if (image_exists.data() === "True") {
+          } else if (image_response.data === "True") {
             this.imageAlreadyPresent =true;
             this.isRunningTests = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -287,7 +285,7 @@ export default {
         // Open file dialog to select a .tar file
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
-        fileInput.accept = '.tar';
+        fileInput.accept = '.tar, .txt';
         fileInput.addEventListener('change', async () => {
           const file = fileInput.files[0];
           if (!file) return;
@@ -302,7 +300,7 @@ export default {
 
             //TEMPORARY
 
-            //formData.append('tarfile', file);
+            formData.append('tarfile', file);
 
             // Append the container name to the FormData object
             formData.append('container_name', containerName);

@@ -26,11 +26,10 @@ class DockerHelper:
         print("image name:"+image_name)
         # Initialize Docker client
         client = docker.from_env()
-        time.sleep(5)
-
+        time.sleep(1)
         # Check if the image exists
         image_exists = any(image_name in image.tags for image in client.images.list())
-
+        print("does image exist? "+str(image_exists))
         return image_exists
 
     def tar2image(self, tar_path):
