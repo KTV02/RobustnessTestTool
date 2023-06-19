@@ -4,3 +4,4 @@ brightness
 sharpness
 smoke
 glare
+resolution

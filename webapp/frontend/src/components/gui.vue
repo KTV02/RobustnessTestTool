@@ -28,12 +28,12 @@
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
           <label for="fileInput">Choose a Test Image:</label>
-          <input type="file" accept=".png, .jpg, .jpeg" @change="setTestImage">
+          <input type="file" accept=".png, .jpg, .jpeg, .txt" @change="setTestImage">
           <br><br>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
-              <div class="slider-title">Accuracy</div>
+              <div class="slider-title">Sampling Steps</div>
             </div>
 
             <div v-for="(label, index) in labels" :key="index">

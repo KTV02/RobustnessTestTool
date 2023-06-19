@@ -185,6 +185,24 @@ class TransformationsHelper:
 
         return modified_image_array
 
+    def lower_resolution(self, image, factor):
+        # Convert the image to a PIL image if it's a NumPy array
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+
+        # Calculate the new dimensions based on the resolution factor
+        width, height = image.size
+        new_width = int(width / factor)
+        new_height = int(height / factor)
+
+        # Resize the image to the lower resolution
+        resized_image = image.resize((new_width, new_height), resample=Image.BILINEAR)
+
+        # Convert the resized image back to a NumPy array
+        resized_image_array = np.array(resized_image)
+
+        return resized_image_array
+
     def apply_transformations(self, image_path, transformations, output):
         print(output)
         if not os.path.exists(output):
@@ -192,7 +210,7 @@ class TransformationsHelper:
 
         # Load the image if `image` parameter is a path
         if isinstance(image_path, str):
-            print("path:"+image_path)
+            print("path:" + image_path)
             image = io.imread(image_path)
         else:
             image = None
@@ -206,7 +224,8 @@ class TransformationsHelper:
             'brightness': (0, 10),  # Example values, adjust as needed
             'sharpness': (0, 20),  # Example values, adjust as needed
             'smoke': (0, 1),  # Example values, adjust as needed
-            'glare': (0, 10)  # Example values, adjust as needed
+            'glare': (0, 10),  # Example values, adjust as needed
+            'resolution': (1, 5)
         }
 
         def apply_transformation(transformation):
@@ -244,6 +263,9 @@ class TransformationsHelper:
                     transformed_image = self.add_smoke(transformed_image, mapped_intensity)
                 elif transformation_label == 'glare':
                     transformed_image = self.add_custom_lens_flare(transformed_image, mapped_intensity)
+                elif transformation_label == 'resolution':
+                    transformed_image = self.lower_resolution(transformed_image, mapped_intensity)
+
 
                 transformed_images.append(transformed_image)
                 transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))
