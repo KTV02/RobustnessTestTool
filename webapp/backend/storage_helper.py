@@ -229,10 +229,26 @@ class StorageHelper:
             extension = 'png'
         elif mime_type == 'image/jpg':
             extension = 'jpg'
+        elif mime_type == 'text/plain':
+            # Decode the data to get the content of the text file
+            decoded_data = base64.b64decode(data).decode('utf-8')
+
+            # Extract the path from the text file
+            extracted_path = decoded_data.strip()
+
+            # Verify if the extracted path points to a .tar file
+            if extracted_path.endswith('.tar'):
+                # Extract the contents of the .tar file to a specific folder
+                tar_output_folder = output + 'basefolder/'
+                with tarfile.open(extracted_path, 'r') as tar:
+                    tar.extractall(path=tar_output_folder)
+                # Return the output folder where the contents are extracted
+                return tar_output_folder
+            else:
+                return "No path to tar file found in uploaded file: "+str(match)
         else:
             return "Not a supported Filetype: " + mime_type
 
-        # Generate a unique file name
         filename = 'baseimage.' + extension
         filename = output + filename
 
@@ -246,11 +262,11 @@ class StorageHelper:
 
     # can handle txt file and tar file
     def tarfile_handler(self, container):
-        returnfile=""
+        returnfile = ""
 
         path = self.get_dockerpath(container)
-        txtpath=path+"tarfile.txt"
-        tarpath=path+"tarfile.tar"
+        txtpath = path + "tarfile.txt"
+        tarpath = path + "tarfile.tar"
         if os.path.isfile(txtpath):
             with open(txtpath, 'r') as txt_file:
                 # Read the first line
@@ -262,7 +278,6 @@ class StorageHelper:
         elif os.path.isfile(tarpath):
             returnfile = tarpath
         return returnfile
-
 
     # def extract_docker_image(self, file_path):
     #     # Ordner in den .tar entpackt wird hat einen einzigartigen Namen -> getrennt von Namen des Containers

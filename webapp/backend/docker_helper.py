@@ -1,15 +1,59 @@
 import json
 import subprocess
 import time
+import urllib
 
 import docker
 import tarfile
+
+import requests
+import os
 
 
 class DockerHelper:
 
     def __init__(self):
+
         self.client = docker.from_env()
+        # self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
+        for image in self.client.images.list():
+            print(str(image.tags))
+        print(str(self.client.images.list))
+        image_exists = any("fabianisensee:robustmis" in image.tags for image in self.client.images.list())
+        print(str(image_exists))
+
+        current_directory = os.getcwd()
+        print(current_directory)
+        #self.start_container("fabianisensee:robustmis", "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/dataset/test",  "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/dataset/output")
+
+        # client = docker.DockerClient(base_url='unix://var/run/docker.sock')
+        # aversion_info = self.client.version()
+
+        # print(version_info)
+        # cmd = f"python --version"
+        # result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        # output = result.stdout
+        # print(output)
+        # self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
+        # self.client= ""
+        # self.check_image_exists("fabianisensee")
+
+    def check_image_exists(self, image_name):
+        base_url = 'http://172.20.11.8:2375'
+        api_version = 'v1.41'  # Adjust the API version based on your Docker version
+
+        filter_value = urllib.parse.quote('reference=="' + image_name + '"')
+        url = f'{base_url}/v{api_version}/images/json?filter={filter_value}'
+
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            images = response.json()
+            print(len(images))
+            return len(images) > 0
+        except requests.exceptions.RequestException as e:
+            print(f'Error occurred while checking image: {e}')
+            return False
 
     def get_image_name(self, tarfilepath):
         # Open the tar file in read mode
@@ -49,10 +93,11 @@ class DockerHelper:
 
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
-        cmd = f"docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
+        cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v '{input_dir}:/input' -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
+        print(cmd)
         result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
         output = result.stdout
-        print("Result: "+str(result)+" Output: "+str(output))
+        print("Result: " + str(result) + " Output: " + str(output))
 
     def build_docker(self, imagetar):
         print("building docker")
