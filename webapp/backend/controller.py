@@ -1,6 +1,7 @@
 import base64
 import os
 import re
+import shutil
 import time
 from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
@@ -65,15 +66,13 @@ class Controller:
             return answer
 
     def input_folder_handler(self, input_folder, transformations, output):
-        # default case works with this dataset (DKFZ): https://www.synapse.org/#!Synapse:syn18779624/wiki/592660
         # Copy the input folder structure without raw.png images
         copied_folders = []
         for idx, [transformation_name, sampling_rate] in enumerate(transformations):
-            for n in range(1, sampling_rate + 1):
+            for n in range(0, int(sampling_rate)):
                 # Create the output folder name using the naming schema
-                output_folder_name = f"{os.path.basename(input_folder)}-{transformation_name}-{n}"
-                output_folder_path = os.path.join(output, output_folder_name)
-
+                output_folder_path = f"{os.path.dirname(input_folder)}-{transformation_name}-{n}"
+                # output_folder_path = os.path.join(output, output_folder_name)
                 # Copy the input folder structure without raw.png files
                 shutil.copytree(input_folder, output_folder_path, ignore=shutil.ignore_patterns("raw.png"))
 
@@ -84,21 +83,27 @@ class Controller:
             for file in files:
                 if file == "raw.png":
                     raw_png_path = os.path.join(root, file)
+                    print("raw png path " + str(raw_png_path))
                     raw_png_internal_path = os.path.relpath(raw_png_path, input_folder)
+                    print("internal path " + str(raw_png_internal_path))
 
                     # Apply transformations to each copied folder
                     for copied_folder in copied_folders:
                         # Generate the transformed image name using the naming schema
-                        transformed_image_name = f"{os.path.basename(raw_png_path).replace('raw', 'raw-' + transformation_name)}"
+                        transformed_image_name = f"{os.path.basename(copied_folder)}.png"
+                        transformed_image_name = transformed_image_name.replace("basefolder", "raw")
+                        print(str(transformed_image_name))
                         transformed_image_path = os.path.join(output, transformed_image_name)
-
                         # Apply transformations using the transformation_helper and save the transformed image
-                        self.transformations_helper.apply_transformations(raw_png_path, transformations,
-                                                                          transformed_image_path)
+                        self.transformations_helper.apply_transformations(raw_png_path, transformations, output)
 
                         # Replace the corresponding raw.png with the transformed image in each copied folder
-                        transformed_image_internal_path = os.path.join(copied_folder, raw_png_internal_path)
-                        shutil.copy2(transformed_image_path, transformed_image_internal_path)
+                        destination_path = os.path.join(copied_folder, raw_png_internal_path)
+                        shutil.move(transformed_image_path, destination_path)
+                        # Move image from root folder inside corresponding copied folder
+                        # Ignore
+                        # transformed_image_internal_path = transformed_image_internal_path.replace("raw.png", transformed_image_name)
+                        # shutil.copy2(transformed_image_path, transformed_image_internal_path)
 
         return "True"
 
@@ -124,8 +129,11 @@ class Controller:
         dockerpath = self.storage_helper.get_dockerpath(container_name)
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
-        self.docker_helper.start_container(image, dockerpath + self.environment.get_transformation_folder(),
-                                           dockerpath + "output/")
+        linuxpath="/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/"+dockerpath
+        for folder in self.storage_helper.get_folder_paths(linuxpath+self.environment.get_transformation_folder()):
+            structure=folder+"/"+"test"+"/"
+            print("folder: "+structure)
+            self.docker_helper.start_container(image, structure,linuxpath+"output/"+os.path.basename(folder))
 
     def image_exists(self, container_name):
         # eigentlich hier tarfile path getten über storagehelper.getdockerpath

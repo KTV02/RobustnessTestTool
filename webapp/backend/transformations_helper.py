@@ -9,7 +9,7 @@ import skimage.exposure as exposure
 from skimage import img_as_float
 from skimage.transform import resize
 from skimage.io import imread
-from PIL import Image, ImageDraw, ImageOps
+from PIL import Image, ImageDraw, ImageOps, ImageChops
 import skimage.io as io
 from skimage.filters import gaussian
 from skimage.transform import rescale
@@ -203,6 +203,34 @@ class TransformationsHelper:
 
         return resized_image_array
 
+    def add_vignette(self,image, intensity):
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image)
+
+        width, height = image.size
+
+        # Create a mask with an elliptical gradient
+        mask = Image.new("L", (width, height), 0)
+        draw = ImageDraw.Draw(mask)
+
+        # Calculate the ellipse parameters
+        cx, cy = width // 2, height // 2
+        rx = int(width * intensity / 2)
+        ry = int(height * intensity / 2)
+
+        # Draw the elliptical gradient on the mask
+        draw.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
+
+        # Convert the image and mask to RGBA
+        image = image.convert("RGBA")
+        mask = mask.convert("L")
+
+        # Apply the mask to the alpha channel of the image
+        image_with_vignette = Image.new("RGBA", (width, height))
+        image_with_vignette.paste(image, (0, 0), mask=mask)
+
+        return image_with_vignette
+
     def apply_transformations(self, image_path, transformations, output):
         print(output)
         if not os.path.exists(output):
@@ -225,7 +253,8 @@ class TransformationsHelper:
             'sharpness': (0, 20),  # Example values, adjust as needed
             'smoke': (0, 1),  # Example values, adjust as needed
             'glare': (0, 10),  # Example values, adjust as needed
-            'resolution': (1, 5)
+            'resolution': (1, 5),
+            'vignette': (0.4, 1.2)
         }
 
         def apply_transformation(transformation):
@@ -265,6 +294,8 @@ class TransformationsHelper:
                     transformed_image = self.add_custom_lens_flare(transformed_image, mapped_intensity)
                 elif transformation_label == 'resolution':
                     transformed_image = self.lower_resolution(transformed_image, mapped_intensity)
+                elif transformation_label == 'vignette':
+                    transformed_image = self.add_vignette(transformed_image, mapped_intensity)
 
 
                 transformed_images.append(transformed_image)
@@ -275,7 +306,7 @@ class TransformationsHelper:
                 image_extension = os.path.splitext(image_path)[1]
 
                 index = intensity_values.index(mapped_intensity)
-                transformed_image_name = "{}-{}-{}-{}".format(
+                transformed_image_name = "{}-{}-{}{}".format(
                     os.path.splitext(image_name)[0],
                     transformation_label,
                     index,

@@ -1,1 +1,1 @@
-C:\Users\lkrem\OneDrive\Studium\Bachelorarbeit\dataset\test.tar
+../../../dataset/test.tar
