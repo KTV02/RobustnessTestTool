@@ -67,7 +67,8 @@ class Controller:
         else:
             return answer
 
-    def evaluate_results(self,container):
+    def evaluate_results(self, container):
+        results = container + self.environment.get_transformation_folder()
         pass
 
     def input_folder_handler(self, input_folder, transformations, output):
@@ -134,11 +135,11 @@ class Controller:
         dockerpath = self.storage_helper.get_dockerpath(container_name)
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
-        linuxpath="/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/"+dockerpath
-        for folder in self.storage_helper.get_folder_paths(linuxpath+self.environment.get_transformation_folder()):
-            structure=folder+"/"+"test"+"/"
-            print("folder: "+structure)
-            self.docker_helper.start_container(image, structure,linuxpath+"output/"+os.path.basename(folder))
+        linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
+        for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
+            structure = folder + "/" + "test" + "/"
+            print("folder: " + structure)
+            self.docker_helper.start_container(image, structure, linuxpath + "output/" + os.path.basename(folder))
 
     def image_exists(self, container_name):
         # eigentlich hier tarfile path getten über storagehelper.getdockerpath
