@@ -57,6 +57,7 @@ class DockerHelper:
 
     def get_image_name(self, tarfilepath):
         # Open the tar file in read mode
+        print(tarfilepath)
         with tarfile.open(tarfilepath, 'r') as tar:
             # Check if the manifest.json file is present in the tar file
             if "manifest.json" in tar.getnames():
@@ -93,11 +94,33 @@ class DockerHelper:
 
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
-        cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v '{input_dir}:/input' -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
+        cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
         print(cmd)
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        output = result.stdout
-        print("Result: " + str(result) + " Output: " + str(output))
+
+
+
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+        # Read and print the output in real-time
+        while True:
+            output = process.stdout.readline().strip()
+            if output:
+                print(output)
+            else:
+                break
+
+        # Wait for the process to finish
+        process.wait()
+
+        # Check the return code of the process
+        if process.returncode != 0:
+            print("Error: Command failed with a non-zero exit code.")
+
+
+
+        #result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        #output = result.stdout
+        #print("Result: " + str(result) + " Output: " + str(output))
 
     def build_docker(self, imagetar):
         print("building docker")

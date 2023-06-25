@@ -5,3 +5,4 @@ sharpness
 smoke
 glare
 resolution
+vignette
