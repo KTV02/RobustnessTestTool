@@ -7,6 +7,7 @@ from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
 from environment import Environment
 from docker_helper import DockerHelper
+from eval_helper import EvalHelper
 
 
 class Controller:
@@ -16,6 +17,7 @@ class Controller:
         self.transformations_helper = TransformationsHelper(self.environment)
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
+        self.eval_helper = EvalHelper()
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -64,6 +66,9 @@ class Controller:
             return "True"
         else:
             return answer
+
+    def evaluate_results(self,container):
+        pass
 
     def input_folder_handler(self, input_folder, transformations, output):
         # Copy the input folder structure without raw.png images
