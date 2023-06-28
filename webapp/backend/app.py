@@ -48,12 +48,9 @@ def transform_images():
 
     data_url = request.json.get('image_path')
 
-    print("dataurl"+str(data_url))
     # Save data url to actual file on server
     image_path = controller.save_test_image(data_url, container_name)
 
-    print("testimage:" + str(image_path))
-    print(transformations)
     success = controller.transform_images(container_name, image_path, transformations)
 
     return jsonify(str(success))
