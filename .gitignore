@@ -7,3 +7,5 @@ webapp/backend/.idea/*
 webapp/backend/storage/tar/*
 webapp/backend/.idea/backend.iml
 webapp/backend/.idea/misc.xml
+*.png
+*.tar

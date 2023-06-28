@@ -236,13 +236,19 @@ class StorageHelper:
             # Extract the path from the text file
             extracted_path = decoded_data.strip()
 
+            #name format of testimages, will be passed to the function in the future
+            name="raw"
+            type=".png"
+            testimage=name+type
+
             # Verify if the extracted path points to a .tar file
             if extracted_path.endswith('.tar'):
                 # Extract the contents of the .tar file to a specific folder
                 tar_output_folder = output
                 with tarfile.open(extracted_path, 'r') as tar:
-                    tar.extractall(path=tar_output_folder)
-
+                    for file in tar.getmembers():
+                        if os.path.basename(file.name).lower().endswith(('.png', '.jpg')):
+                            tar.extract(file, path=tar_output_folder)
                 return tar_output_folder
             else:
                 return "No path to tar file found in uploaded file: "+str(match)

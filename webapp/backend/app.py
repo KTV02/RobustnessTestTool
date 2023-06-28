@@ -1,4 +1,5 @@
 import base64
+import time
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS  # Import CORS from flask_cors
@@ -52,7 +53,6 @@ def transform_images():
     image_path = controller.save_test_image(data_url, container_name)
 
     print("testimage:" + str(image_path))
-
     print(transformations)
     success = controller.transform_images(container_name, image_path, transformations)
 
