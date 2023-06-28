@@ -239,10 +239,10 @@ class StorageHelper:
             # Verify if the extracted path points to a .tar file
             if extracted_path.endswith('.tar'):
                 # Extract the contents of the .tar file to a specific folder
-                tar_output_folder = output + 'basefolder/'
+                tar_output_folder = output
                 with tarfile.open(extracted_path, 'r') as tar:
                     tar.extractall(path=tar_output_folder)
-                # Return the output folder where the contents are extracted
+
                 return tar_output_folder
             else:
                 return "No path to tar file found in uploaded file: "+str(match)

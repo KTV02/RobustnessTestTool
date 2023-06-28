@@ -74,6 +74,19 @@ class Controller:
     def input_folder_handler(self, input_folder, transformations, output):
         # Copy the input folder structure without raw.png images
         copied_folders = []
+
+        directories = []
+        for root, dirs, files in os.walk(input_folder):
+            for directory in dirs:
+                directory_path = os.path.join(root, directory)
+                directories.append(directory_path)
+
+        if len(directories) != 1:
+            raise OSError("Too many or no input directories found in .tar file")
+
+        input_folder = directories[0] + "/"
+        print("input folder" + str(input_folder))
+
         for idx, [transformation_name, sampling_rate] in enumerate(transformations):
             for n in range(0, int(sampling_rate)):
                 # Create the output folder name using the naming schema
@@ -106,10 +119,6 @@ class Controller:
                         # Replace the corresponding raw.png with the transformed image in each copied folder
                         destination_path = os.path.join(copied_folder, raw_png_internal_path)
                         shutil.move(transformed_image_path, destination_path)
-                        # Move image from root folder inside corresponding copied folder
-                        # Ignore
-                        # transformed_image_internal_path = transformed_image_internal_path.replace("raw.png", transformed_image_name)
-                        # shutil.copy2(transformed_image_path, transformed_image_internal_path)
 
         return "True"
 
@@ -136,10 +145,12 @@ class Controller:
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
-            structure = folder + "/" + "test" + "/"
-            print("folder: " + structure)
-            self.docker_helper.start_container(image, structure, linuxpath + "output/" + os.path.basename(folder))
+        self.docker_helper.start_container(image, linuxpath + self.environment.get_transformation_folder(),
+                                           linuxpath + "output/")
+        # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
+        #     structure = folder + "/" + "test" + "/"
+        #     print("folder: " + structure)
+        #     self.docker_helper.start_container(image, structure, linuxpath + "output/" + os.path.basename(folder))
 
     def image_exists(self, container_name):
         # eigentlich hier tarfile path getten über storagehelper.getdockerpath

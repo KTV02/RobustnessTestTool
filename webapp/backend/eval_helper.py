@@ -101,13 +101,14 @@ class EvalHelper:
 
         return output
 
-    def eval_image(self, truth, prediction):
+	#def eval_image(self, truth, prediction):	
+    def eval_image(self):
         # Load the predicted PNG
-        predicted_image = Image.open(prediction)
+        predicted_image = Image.open("predicted.png")
         predicted_array = np.array(predicted_image, dtype=bool)
 
         # Load the ground truth PNG
-        ground_truth_image = Image.open(truth)
+        ground_truth_image = Image.open("truth.png")
         ground_truth_array = np.array(ground_truth_image, dtype=bool)
 
         # Call the compute_dice_coefficient function
