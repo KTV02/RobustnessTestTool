@@ -1,6 +1,7 @@
 import base64
 import glob
 import re
+import shutil
 import sqlite3
 import os
 import datetime
@@ -317,3 +318,53 @@ class StorageHelper:
             if not os.path.exists(extract_path):
                 return unique_name
             i += 1
+
+    def create_test_environment(self, dockerpath):
+        #create test directory
+        self.create_dir(dockerpath+self.environment.get_test_dir())
+        #get number of transformations
+        transformations=dockerpath+self.environment.get_transformation_folder()
+        count = 0
+        for item in os.listdir(transformations):
+            item_path = os.path.join(transformations, item)
+            if os.path.isdir(item_path):
+                count += 1
+
+        base_folder = os.path.join(dockerpath+"/"+self.environment.get_test_dir(), "Stage_1")
+        subfolder_1 = "Sigmoid"
+        #subfolder_2 = "1"
+
+        # Create the base folder
+        os.makedirs(base_folder, exist_ok=True)
+
+        # Create the subfolders
+        os.makedirs(os.path.join(base_folder, subfolder_1), exist_ok=True)
+
+        # Create additional numbered folders
+        for i in range(count):
+            folder_name = str(i + 1)
+            os.makedirs(os.path.join(base_folder, subfolder_1, folder_name), exist_ok=True)
+
+
+        #iterate over every folder in the /transformations and copy the images to the correct position in "running"
+        for i, folder in enumerate(transformations):
+            #create one folder for each transformation
+            destination_folder = os.path.join(base_folder+"/"+subfolder_1 +"/"+ str(i))
+            os.makedirs(destination_folder, exist_ok=True)
+
+            folder_path = os.path.join(transformations, folder)
+            images = [file for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file))]
+
+            count=0
+            for image in images:
+                source_image_path = os.path.join(folder_path, image)
+
+                destination_image_folder = os.path.join(destination_folder, str(count))
+                os.makedirs(destination_image_folder, exist_ok=True)
+                destination_image_path = os.path.join(destination_image_folder, "raw.png")
+                print(destination_image_path)
+                shutil.copy2(source_image_path, destination_image_path)
+                count+=1
+                print("Copied", image, "from", folder, "to", destination_folder)
+
+        print("Folder structure created successfully.")

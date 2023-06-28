@@ -50,8 +50,6 @@ class Controller:
 
     def transform_images(self, container, images, transformations):
         output = str(self.storage_helper.get_dockerpath(container)) + self.environment.get_transformation_folder()
-        print("output:" + str(output))
-        print("imagepath:" + str(images))
 
         if os.path.isfile(images):
             # If the image path points to a file, apply transformations directly
@@ -74,51 +72,68 @@ class Controller:
     def input_folder_handler(self, input_folder, transformations, output):
         # Copy the input folder structure without raw.png images
         copied_folders = []
-
         directories = []
         for root, dirs, files in os.walk(input_folder):
             for directory in dirs:
                 directory_path = os.path.join(root, directory)
                 directories.append(directory_path)
 
-        if len(directories) != 1:
-            raise OSError("Too many or no input directories found in .tar file")
-
-        input_folder = directories[0] + "/"
-        print("input folder" + str(input_folder))
+        input_folder = ""
+        if len(directories) > 1:
+            raise OSError("Too many directories found in .tar file")
+        elif len(directories) == 0:
+            # if no directory is found in input folder, it could be that pwd is already inside the input folder
+            current_directory = os.getcwd()
+            # check if the current directory is not transformations folder (if it were something went wrong and there
+            # are no input images)
+            if current_directory != "transformations":
+                input_folder = current_directory
+        elif len(directories) == 1:
+            # nice! everything worked
+            input_folder = directories[0] + "/"
 
         for idx, [transformation_name, sampling_rate] in enumerate(transformations):
             for n in range(0, int(sampling_rate)):
                 # Create the output folder name using the naming schema
                 output_folder_path = f"{os.path.dirname(input_folder)}-{transformation_name}-{n}"
-                # output_folder_path = os.path.join(output, output_folder_name)
                 # Copy the input folder structure without raw.png files
-                shutil.copytree(input_folder, output_folder_path, ignore=shutil.ignore_patterns("raw.png"))
+                shutil.copytree(input_folder, output_folder_path, ignore=shutil.ignore_patterns("*.png"))
 
                 copied_folders.append(output_folder_path)
 
-        # Iterate over raw.png files in the original input folder
+        # Get the current directory
+        current_directory = input_folder.split("/transformations/")[0]
+        current_directory = os.getcwd()+"/"+current_directory+"/transformations/"
+
+        # Iterate over the image files in the input_folder
         for root, dirs, files in os.walk(input_folder):
             for file in files:
-                if file == "raw.png":
+                if file.lower().endswith(('.png', '.jpg')):
+                    # Get the path of the current image
                     raw_png_path = os.path.join(root, file)
-                    print("raw png path " + str(raw_png_path))
-                    raw_png_internal_path = os.path.relpath(raw_png_path, input_folder)
-                    print("internal path " + str(raw_png_internal_path))
 
-                    # Apply transformations to each copied folder
-                    for copied_folder in copied_folders:
-                        # Generate the transformed image name using the naming schema
-                        transformed_image_name = f"{os.path.basename(copied_folder)}.png"
-                        transformed_image_name = transformed_image_name.replace("basefolder", "raw")
-                        print(str(transformed_image_name))
-                        transformed_image_path = os.path.join(output, transformed_image_name)
-                        # Apply transformations using the transformation_helper and save the transformed image
-                        self.transformations_helper.apply_transformations(raw_png_path, transformations, output)
+                    # Apply transformations to the current image
+                    self.transformations_helper.apply_transformations(raw_png_path, transformations, current_directory)
 
-                        # Replace the corresponding raw.png with the transformed image in each copied folder
-                        destination_path = os.path.join(copied_folder, raw_png_internal_path)
-                        shutil.move(transformed_image_path, destination_path)
+                    # Get the base name and extension of the current image
+                    base_name, extension = os.path.splitext(file)
+
+                    # Get the list of transformed images in the current directory
+                    transformed_images = [f for f in os.listdir(current_directory) if
+                                          f.startswith(base_name) and f.endswith('.png')]
+                    # Create the corresponding folder for each transformed image
+                    for transformed_image in transformed_images:
+                        # Get the transformation name and number from the transformed image name
+                        transformed_name, number = transformed_image.replace(base_name + '-', '').rsplit('-', 1)
+                        number = number.split(".")[0]
+
+                        # Create the folder name
+                        folder_name = f"basefolder-{transformed_name}-{number}"
+                        folder_path = os.path.join(current_directory, folder_name)
+
+                        # Move the transformed image to the corresponding folder
+                        destination_path = os.path.join(folder_path, transformed_image)
+                        shutil.move(os.path.join(current_directory, transformed_image), destination_path)
 
         return "True"
 
@@ -144,8 +159,10 @@ class Controller:
         dockerpath = self.storage_helper.get_dockerpath(container_name)
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
+
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        self.docker_helper.start_container(image, linuxpath + self.environment.get_transformation_folder(),
+        self.storage_helper.create_test_environment(linuxpath)
+        self.docker_helper.start_container(image, linuxpath + self.environment.get_test_dir(),
                                            linuxpath + "output/")
         # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
         #     structure = folder + "/" + "test" + "/"
