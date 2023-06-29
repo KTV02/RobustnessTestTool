@@ -1,3 +1,5 @@
+import os
+
 from transformations_helper import TransformationsHelper
 from storage_helper import StorageHelper
 
@@ -11,7 +13,12 @@ class Environment:
         self.images_folder = "images"
         self.transformation_folder = "transformations/"
         self.test_folder = "testing/"
+        self.valid_extensions = ['.jpg', '.jpeg', '.png']  # List of valid image extensions
 
+    def valid_image(self,file_path):
+
+        extension = os.path.splitext(file_path)[1].lower()
+        return extension in self.valid_extensions
     def get_transformation_folder(self):
         return self.transformation_folder
 
