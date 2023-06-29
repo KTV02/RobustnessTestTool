@@ -21,9 +21,9 @@ def get_docker_containers():
 def add_docker_container():
     print("i was here")
     container_name = request.form['container_name']
-    #TEMPORARY
+    # TEMPORARY
     tar_path = request.files['tarfile']
-    #tar_path=""
+    # tar_path=""
 
     success, message = controller.store_container(tar_path, container_name)
     print("Registration: " + message)
@@ -67,7 +67,7 @@ def build_docker():
 def image_exists():
     container_name = request.json.get('container_name')
     if controller.image_exists(container_name):
-        #image already exists, no need to load from tar
+        # image already exists, no need to load from tar
         return jsonify("True")
     else:
         return jsonify("False")
@@ -76,9 +76,17 @@ def image_exists():
 @app.route('/api/run-tests', methods=['POST'])
 def run_tests():
     container_name = request.json.get('container_name')
-    controller.run_tests(container_name)
+    success = controller.run_tests(container_name)
 
-    return "testmethod yet to implement"
+    return jsonify(str(success))
+
+
+@app.route('/api/evaluate-results', methods=['POST'])
+def evaluate_results():
+    container_name = request.json.get('container_name')
+    success = controller.evaluate_results(container_name)
+
+    return jsonify(str(success))
 
 
 @app.route('/api/available-transformations', methods=['GET'])

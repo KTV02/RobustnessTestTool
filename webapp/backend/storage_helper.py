@@ -237,10 +237,10 @@ class StorageHelper:
             # Extract the path from the text file
             extracted_path = decoded_data.strip()
 
-            #name format of testimages, will be passed to the function in the future
-            name="raw"
-            type=".png"
-            testimage=name+type
+            # name format of testimages, will be passed to the function in the future
+            name = "raw"
+            type = ".png"
+            testimage = name + type
 
             # Verify if the extracted path points to a .tar file
             if extracted_path.endswith('.tar'):
@@ -252,7 +252,7 @@ class StorageHelper:
                             tar.extract(file, path=tar_output_folder)
                 return tar_output_folder
             else:
-                return "No path to tar file found in uploaded file: "+str(match)
+                return "No path to tar file found in uploaded file: " + str(match)
         else:
             return "Not a supported Filetype: " + mime_type
 
@@ -267,7 +267,7 @@ class StorageHelper:
                 return "Encoding not supported: " + encoding
         return filename
 
-    def get_folder_paths(self,directory):
+    def get_folder_paths(self, directory):
         folder_paths = []
         for item in os.listdir(directory):
             item_path = os.path.join(directory, item)
@@ -288,7 +288,7 @@ class StorageHelper:
                 destination_tar = txt_file.readline().strip()
 
             # Check if is a valid filepath
-            print("destoe:"+str(destination_tar))
+            print("destoe:" + str(destination_tar))
             if os.path.isfile(destination_tar) and destination_tar.endswith('.tar'):
                 returnfile = destination_tar
         elif os.path.isfile(tarpath):
@@ -320,19 +320,19 @@ class StorageHelper:
             i += 1
 
     def create_test_environment(self, dockerpath):
-        #create test directory
-        self.create_dir(dockerpath+self.environment.get_test_dir())
-        #get number of transformations
-        transformations=dockerpath+self.environment.get_transformation_folder()
+        # create test directory
+        self.create_dir(dockerpath + self.environment.get_test_dir())
+        # get number of transformations
+        transformations = dockerpath + self.environment.get_transformation_folder()
         count = 0
         for item in os.listdir(transformations):
             item_path = os.path.join(transformations, item)
             if os.path.isdir(item_path):
                 count += 1
 
-        base_folder = os.path.join(dockerpath+"/"+self.environment.get_test_dir(), "Stage_1")
+        base_folder = os.path.join(dockerpath + "/" + self.environment.get_test_dir(), "Stage_1")
         subfolder_1 = "Sigmoid"
-        #subfolder_2 = "1"
+        # subfolder_2 = "1"
 
         # Create the base folder
         os.makedirs(base_folder, exist_ok=True)
@@ -340,31 +340,33 @@ class StorageHelper:
         # Create the subfolders
         os.makedirs(os.path.join(base_folder, subfolder_1), exist_ok=True)
 
-        # Create additional numbered folders
-        for i in range(count):
-            folder_name = str(i + 1)
-            os.makedirs(os.path.join(base_folder, subfolder_1, folder_name), exist_ok=True)
 
+        # iterate over every folder in the /transformations and copy the images to the correct position in "running"
+        transformation_counter = 0
+        for folder in os.scandir(transformations):
+            #make sure its actually a transformation folder
+            if folder.is_dir():
+                # create one folder for each transformation
+                destination_folder = os.path.join(base_folder + "/" + subfolder_1 + "/" + str(transformation_counter))
+                os.makedirs(destination_folder, exist_ok=True)
+                #path to current transformation folder
+                folder_path = os.path.join(transformations, folder)
+                #for every testimage
+                count = 0
+                for file in os.listdir(folder_path):
+                    filepath = os.path.join(folder_path, file)
+                    #make sure is image
+                    if os.path.isfile(filepath) and self.environment.valid_image(filepath):
+                        image = filepath
+                        source_image_path = os.path.join(folder_path, image)
 
-        #iterate over every folder in the /transformations and copy the images to the correct position in "running"
-        for i, folder in enumerate(transformations):
-            #create one folder for each transformation
-            destination_folder = os.path.join(base_folder+"/"+subfolder_1 +"/"+ str(i))
-            os.makedirs(destination_folder, exist_ok=True)
-
-            folder_path = os.path.join(transformations, folder)
-            images = [file for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file))]
-
-            count=0
-            for image in images:
-                source_image_path = os.path.join(folder_path, image)
-
-                destination_image_folder = os.path.join(destination_folder, str(count))
-                os.makedirs(destination_image_folder, exist_ok=True)
-                destination_image_path = os.path.join(destination_image_folder, "raw.png")
-                print(destination_image_path)
-                shutil.copy2(source_image_path, destination_image_path)
-                count+=1
-                print("Copied", image, "from", folder, "to", destination_folder)
+                        destination_image_folder = os.path.join(destination_folder, str(count))
+                        os.makedirs(destination_image_folder, exist_ok=True)
+                        destination_image_path = os.path.join(destination_image_folder, "raw.png")
+                        print(destination_image_path)
+                        shutil.copy2(source_image_path, destination_image_path)
+                        count += 1
+                        print("Copied", image, "from", folder, "to", destination_folder)
+                transformation_counter += 1
 
         print("Folder structure created successfully.")

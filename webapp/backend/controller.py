@@ -3,6 +3,8 @@ import os
 import re
 import shutil
 import time
+from collections import Counter
+
 from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
 from environment import Environment
@@ -18,6 +20,8 @@ class Controller:
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
+        self.evaluate_results("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+                              "/backend/images/image6/")
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -66,8 +70,41 @@ class Controller:
             return answer
 
     def evaluate_results(self, container):
-        results = container + self.environment.get_transformation_folder()
-        pass
+        results = container + "output/"
+        transformations=container+self.environment.get_transformation_folder()
+        images = []
+
+        transformation_labels2d=self.get_stored_transformations(transformations)
+        print(transformation_labels2d)
+
+        output_path = results
+        solutions_path = container+"solutions/"
+        transformation_array = transformation_labels2d
+
+        results = []
+
+        for transformation_index, (transformation, num_folders) in enumerate(transformation_array):
+            print("num: "+str(num_folders))
+            for folder_index in range(num_folders):
+                current_folder = os.path.join(output_path, str(transformation_index), str(folder_index))
+                print(current_folder)
+                solution_filename = "solution-{}.png".format(folder_index)
+                solution_filepath = os.path.join(solutions_path, solution_filename)
+
+                output_folder_exists = os.path.exists(current_folder)
+                solution_file_exists = os.path.exists(solution_filepath)
+
+                if output_folder_exists and solution_file_exists:
+                    output_filepath = os.path.join(current_folder, "output.png")
+
+                    # Call the eval_image function with the output and solution file paths
+                    result = self.eval_helper.eval_image(output_filepath, solution_filepath)
+
+                    # Store the result along with the transformation, folder index, and solution file name
+                    result_entry = [transformation, folder_index, result]
+                    results.append(result_entry)
+
+
 
     def input_folder_handler(self, input_folder, transformations, output):
         # Copy the input folder structure without raw.png images
@@ -104,6 +141,10 @@ class Controller:
         # Get the current directory
         current_directory = input_folder.split("/transformations/")[0]
         current_directory = os.getcwd()+"/"+current_directory+"/transformations/"
+
+        #ensure no windows double backslash
+        current_directory=current_directory.replace("\\","/")
+        print(current_directory)
 
         # Iterate over the image files in the input_folder
         for root, dirs, files in os.walk(input_folder):
@@ -159,11 +200,20 @@ class Controller:
         dockerpath = self.storage_helper.get_dockerpath(container_name)
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
-
+        winpath="C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        self.storage_helper.create_test_environment(linuxpath)
-        self.docker_helper.start_container(image, linuxpath + self.environment.get_test_dir(),
+        linuxpath=winpath
+        try:
+            self.storage_helper.create_test_environment(linuxpath)
+        except Exception as e:
+            return "Something went wrong while creating testing environment "+str(e)
+        try:
+            self.docker_helper.start_container(image, linuxpath + self.environment.get_test_dir(),
                                            linuxpath + "output/")
+        except Exception as e:
+            return "Something went wrong while testing: "+str(e)
+        return True
+
         # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
         #     structure = folder + "/" + "test" + "/"
         #     print("folder: " + structure)
@@ -176,3 +226,19 @@ class Controller:
         if not os.path.isfile(tarfile):
             return "Invalid tarfile"
         return self.docker_helper.is_already_present(tarfile)
+
+    def get_stored_transformations(self, transformations):
+        transformation_names = list() # Use a set to avoid duplicates
+        print(transformations)
+        for root, dirs, files in os.walk(transformations):
+            for directory in dirs:
+                parts = directory.split('-')
+                if len(parts) == 3:
+                    transformation_name = parts[1]
+                    print(transformation_name)
+                    transformation_names.append(transformation_name)
+
+        label_counts = Counter(transformation_names)  # Count the occurrences of each label
+        label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
+        return label_counts_2d
+
