@@ -20,8 +20,8 @@ class Controller:
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
-        self.evaluate_results("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-                              "/backend/images/image6/")
+        print(self.evaluate_results("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+                                    "/backend/images/image3/"))
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -71,40 +71,58 @@ class Controller:
 
     def evaluate_results(self, container):
         results = container + "output/"
-        transformations=container+self.environment.get_transformation_folder()
-        images = []
+        transformation_folder = container + self.environment.get_transformation_folder()
+        transformation_array = self.get_stored_transformations(transformation_folder)
 
-        transformation_labels2d=self.get_stored_transformations(transformations)
-        print(transformation_labels2d)
+        solutions_path = container + "solutions/"
 
-        output_path = results
-        solutions_path = container+"solutions/"
-        transformation_array = transformation_labels2d
+        # Preallocate the list of arrays
+        data3d = []
 
-        results = []
+        # create 3d strucutre for transformation,strength, the value array for all testimages
+        for _ in range(len(transformation_array)):
+            layer = []  # Create a new layer
+            for _ in range(10):
+                row = list()  # Create a new list
+                layer.append(row)
+            data3d.append(layer)
 
+        print("TA: " + str(transformation_array))
+        foldercount = 0
+        # transformation index counts up total transformations (2 with strength 3 would still be 2)
         for transformation_index, (transformation, num_folders) in enumerate(transformation_array):
-            print("num: "+str(num_folders))
-            for folder_index in range(num_folders):
-                current_folder = os.path.join(output_path, str(transformation_index), str(folder_index))
-                print(current_folder)
-                solution_filename = "solution-{}.png".format(folder_index)
-                solution_filepath = os.path.join(solutions_path, solution_filename)
+            current_transformation = []
+            print("num: " + str(num_folders))
+            for strength in range(int(num_folders)):
+                current_transformation_folder = os.path.join(results, str(foldercount))
+                total_images = sum(1 for entry in os.scandir(current_transformation_folder) if entry.is_dir())
+                for image_index in range(total_images):
+                    current_imagefolder = os.path.join(current_transformation_folder, str(image_index)).replace("\\",
+                                                                                                                "/")
+                    print(current_imagefolder)
+                    solution_filename = "solution-{}.png".format(image_index)
+                    solution_filepath = os.path.join(solutions_path, solution_filename)
+                    print(solution_filename)
 
-                output_folder_exists = os.path.exists(current_folder)
-                solution_file_exists = os.path.exists(solution_filepath)
+                    output_folder_exists = os.path.exists(current_imagefolder)
+                    solution_file_exists = os.path.exists(solution_filepath)
+                    print(str(output_folder_exists and solution_file_exists))
 
-                if output_folder_exists and solution_file_exists:
-                    output_filepath = os.path.join(current_folder, "output.png")
+                    if output_folder_exists and solution_file_exists:
+                        output_filepath = os.path.join(current_imagefolder, "output.png")
 
-                    # Call the eval_image function with the output and solution file paths
-                    result = self.eval_helper.eval_image(output_filepath, solution_filepath)
+                        # Call the eval_image function with the output and solution file paths
+                        result = self.eval_helper.eval_image(output_filepath, solution_filepath)
+                        print(result)
+                        current_transformation.append(result)
+                foldercount += 1
+                data3d[transformation_index][strength] = current_transformation
 
-                    # Store the result along with the transformation, folder index, and solution file name
-                    result_entry = [transformation, folder_index, result]
-                    results.append(result_entry)
-
-
+            print(str(data3d))
+            # if only results for baseimage or none exists
+            if len(data3d) <= 1:
+                return False, None
+        return True, data3d
 
     def input_folder_handler(self, input_folder, transformations, output):
         # Copy the input folder structure without raw.png images
@@ -140,10 +158,10 @@ class Controller:
 
         # Get the current directory
         current_directory = input_folder.split("/transformations/")[0]
-        current_directory = os.getcwd()+"/"+current_directory+"/transformations/"
+        current_directory = os.getcwd() + "/" + current_directory + "/transformations/"
 
-        #ensure no windows double backslash
-        current_directory=current_directory.replace("\\","/")
+        # ensure no windows double backslash
+        current_directory = current_directory.replace("\\", "/")
         print(current_directory)
 
         # Iterate over the image files in the input_folder
@@ -200,18 +218,18 @@ class Controller:
         dockerpath = self.storage_helper.get_dockerpath(container_name)
         tarfile = self.storage_helper.tarfile_handler(container_name)
         image = self.docker_helper.get_image_name(tarfile)
-        winpath="C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
+        winpath = "C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        linuxpath=winpath
+        linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
-            return "Something went wrong while creating testing environment "+str(e)
+            return "Something went wrong while creating testing environment " + str(e)
         try:
             self.docker_helper.start_container(image, linuxpath + self.environment.get_test_dir(),
-                                           linuxpath + "output/")
+                                               linuxpath + "output/")
         except Exception as e:
-            return "Something went wrong while testing: "+str(e)
+            return "Something went wrong while testing: " + str(e)
         return True
 
         # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
@@ -228,17 +246,19 @@ class Controller:
         return self.docker_helper.is_already_present(tarfile)
 
     def get_stored_transformations(self, transformations):
-        transformation_names = list() # Use a set to avoid duplicates
+        transformation_names = list()
         print(transformations)
         for root, dirs, files in os.walk(transformations):
             for directory in dirs:
+                print(directory)
                 parts = directory.split('-')
                 if len(parts) == 3:
                     transformation_name = parts[1]
                     print(transformation_name)
                     transformation_names.append(transformation_name)
+                elif len(parts) == 1 and directory == "basefolder":
+                    transformation_names.append("base")
 
         label_counts = Counter(transformation_names)  # Count the occurrences of each label
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
         return label_counts_2d
-
