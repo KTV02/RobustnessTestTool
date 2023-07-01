@@ -84,7 +84,7 @@ def run_tests():
 @app.route('/api/evaluate-results', methods=['POST'])
 def evaluate_results():
     container_name = request.json.get('container_name')
-    success = controller.evaluate_results(container_name)
+    success,data = controller.evaluate_results(container_name)
 
     return jsonify(str(success))
 
