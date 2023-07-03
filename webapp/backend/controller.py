@@ -1,15 +1,22 @@
 import base64
+import json
 import os
 import re
 import shutil
 import time
 from collections import Counter
 
+import numpy as np
+
 from storage_helper import StorageHelper
 from transformations_helper import TransformationsHelper
 from environment import Environment
 from docker_helper import DockerHelper
 from eval_helper import EvalHelper
+import h5py
+
+
+
 
 
 class Controller:
@@ -20,16 +27,21 @@ class Controller:
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
+        print("meep")
+        # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
         print(self.evaluate_results("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-                                    "/backend/images/image3/"))
+                                    "/backend/images/image9/"))
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
         return results
 
-    def load_container_results(self, container_id):
-        result = self.storage_helper.get_result_score(container_id)
-        return result
+    def load_container_results(self, container):
+        results = self.storage_helper.get_results(container)
+        newest = len(results)
+        result=results[newest-1]
+        print(result[0])
+        return self.storage_helper.json_2_array(result[0])
 
     def save_user_tar(self, tar_file):
         temp_path = self.environment.get_tar_dir() + "temp" + str(int(time.time())) + ".tar"
@@ -45,6 +57,7 @@ class Controller:
         if success:
             success, message = self.storage_helper.save_docker_container(extract_path, name, size)
         return success, message
+
 
     def results_available(self, path):
         return self.storage_helper.check_results_exist(path)
@@ -72,31 +85,36 @@ class Controller:
     def evaluate_results(self, container):
         results = container + "output/"
         transformation_folder = container + self.environment.get_transformation_folder()
-        transformation_array = self.get_stored_transformations(transformation_folder)
+        transformation_array,labels = self.get_stored_transformations(transformation_folder)
 
         solutions_path = container + "solutions/"
 
         # Preallocate the list of arrays
         data3d = []
 
-        # create 3d strucutre for transformation,strength, the value array for all testimages
+        # create 3d strucutre for transformation,sample_index, the value array for all testimages
         for _ in range(len(transformation_array)):
             layer = []  # Create a new layer
-            for _ in range(10):
+            # for every trasnformation as often as it has sample steps
+            for _ in range(int(transformation_array[_][1])):
                 row = list()  # Create a new list
                 layer.append(row)
             data3d.append(layer)
 
         print("TA: " + str(transformation_array))
         foldercount = 0
-        # transformation index counts up total transformations (2 with strength 3 would still be 2)
+        # transformation index counts up total transformations (2 with sample_index 3 would still be 2)
         for transformation_index, (transformation, num_folders) in enumerate(transformation_array):
-            current_transformation = []
+            print(str(transformation_index) + " transformation index")
             print("num: " + str(num_folders))
-            for strength in range(int(num_folders)):
+            for sample_index in range(int(num_folders)):
+                current_transformation = []
+
+                print("Transformation: " + str(transformation_index) + " with sample index: " + str(sample_index))
                 current_transformation_folder = os.path.join(results, str(foldercount))
                 total_images = sum(1 for entry in os.scandir(current_transformation_folder) if entry.is_dir())
                 for image_index in range(total_images):
+                    print("Image Index: " + str(image_index))
                     current_imagefolder = os.path.join(current_transformation_folder, str(image_index)).replace("\\",
                                                                                                                 "/")
                     print(current_imagefolder)
@@ -109,19 +127,22 @@ class Controller:
                     print(str(output_folder_exists and solution_file_exists))
 
                     if output_folder_exists and solution_file_exists:
-                        output_filepath = os.path.join(current_imagefolder, "output.png")
+                        output_filepath = os.path.join(current_imagefolder, "output.png").replace("\\", "/")
 
                         # Call the eval_image function with the output and solution file paths
+                        print(output_filepath)
+                        print(solution_filepath)
                         result = self.eval_helper.eval_image(output_filepath, solution_filepath)
-                        print(result)
+                        print(str(image_index) + " image index with result " + str(result))
                         current_transformation.append(result)
                 foldercount += 1
-                data3d[transformation_index][strength] = current_transformation
-
+                data3d[transformation_index][sample_index] = current_transformation
             print(str(data3d))
-            # if only results for baseimage or none exists
-            if len(data3d) <= 1:
-                return False, None
+
+        self.storage_helper.store_results(container, data3d,labels)
+        # if only results for baseimage or none exists
+        if len(data3d) <= 1:
+            return False, "No results present"
         return True, data3d
 
     def input_folder_handler(self, input_folder, transformations, output):
@@ -260,5 +281,6 @@ class Controller:
                     transformation_names.append("base")
 
         label_counts = Counter(transformation_names)  # Count the occurrences of each label
+        labels=list(label_counts.keys())
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
-        return label_counts_2d
+        return label_counts_2d,labels

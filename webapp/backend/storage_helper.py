@@ -1,5 +1,6 @@
 import base64
 import glob
+import json
 import re
 import shutil
 import sqlite3
@@ -7,6 +8,8 @@ import os
 import datetime
 import tarfile
 
+import h5py
+import numpy as np
 from werkzeug.utils import secure_filename
 
 
@@ -19,7 +22,7 @@ def get_current_datetime():
 class StorageHelper:
     def __init__(self, environment, transformations_helper):
         self.environment = environment
-        self.create_results_database(transformations_helper.get_available_transformations())
+        self.create_results_database()
         self.create_container_database()
         self.create_dir(self.environment.get_tar_dir())
         self.create_dir(self.environment.get_images_folder())
@@ -33,7 +36,7 @@ class StorageHelper:
         conn.commit()
         conn.close()
 
-    def create_results_database(self, transformations):
+    def create_results_database(self):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         # Check if the 'results' table exists
@@ -51,28 +54,10 @@ class StorageHelper:
                     dockerid INTEGER,
                     date TEXT,
                     score DOUBLE,
-                    {transformation_columns},
+                    resultfile TEXT,
                     FOREIGN KEY (dockerid) REFERENCES docker_containers(id)
                 )
-                '''.format(
-                transformation_columns=", ".join(f"{transformation}result TEXT" for transformation in transformations))
-        else:
-            # Get the current columns of the 'results' table
-            c.execute("PRAGMA table_info(results)")
-            existing_columns = [column[1] for column in c.fetchall()]
-
-            # Add missing columns
-            columns_to_add = []
-            for transformation in transformations:
-                if f"{transformation}result" not in existing_columns:
-                    columns_to_add.append(f"{transformation}result TEXT")
-
-            if columns_to_add:
-                # Alter the table to add missing columns
-                query = '''
-                        ALTER TABLE results
-                        {columns_to_add}
-                        '''.format(columns_to_add=", ".join("ADD COLUMN " + column for column in columns_to_add))
+                '''
         # Execute the query
         c.execute(query)
         # Commit the changes and close the connection
@@ -109,15 +94,25 @@ class StorageHelper:
         except Exception as e:
             return False, f"Container failed to register: {str(e)}"
 
-    def check_results_exist(self, path):
+    def get_results(self, path):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
-        c.execute("SELECT dockerpath FROM results WHERE Dockerpath=?", (path,))
-        print("Dockerpath= " + path)
-        result = c.fetchone()
+        c.execute(
+            "SELECT resultfile FROM results  WHERE dockerid = ? ORDER BY date",
+            (path,))
+        print("Dockerpath= " + str(path))
+        result = c.fetchall()
         conn.close()
-        print(result)
-        return result is not None
+        return result
+
+    def json_2_array(self,path):
+        # Read the JSON file
+        with open(path, 'r') as file:
+            json_data = json.load(file)
+
+        # Reconstruct the 3D array
+        print(json_data)
+        return json_data
 
     def get_dockerpath(self, container_id):
         conn = sqlite3.connect(self.environment.get_database_file())
@@ -149,7 +144,7 @@ class StorageHelper:
 
     def store_docker(self, tar_url):
         unique_name = self.generate_unique_name()
-        extract_path = os.path.join(self.environment.get_images_folder(), unique_name)
+        extract_path = os.path.join(self.environment.get_images_folder(), unique_name).replace("\\", "/")
         self.create_dir(extract_path)
         extract_path = extract_path + "/"
 
@@ -340,22 +335,21 @@ class StorageHelper:
         # Create the subfolders
         os.makedirs(os.path.join(base_folder, subfolder_1), exist_ok=True)
 
-
         # iterate over every folder in the /transformations and copy the images to the correct position in "running"
         transformation_counter = 0
         for folder in os.scandir(transformations):
-            #make sure its actually a transformation folder
+            # make sure its actually a transformation folder
             if folder.is_dir():
                 # create one folder for each transformation
                 destination_folder = os.path.join(base_folder + "/" + subfolder_1 + "/" + str(transformation_counter))
                 os.makedirs(destination_folder, exist_ok=True)
-                #path to current transformation folder
+                # path to current transformation folder
                 folder_path = os.path.join(transformations, folder)
-                #for every testimage
+                # for every testimage
                 count = 0
                 for file in os.listdir(folder_path):
                     filepath = os.path.join(folder_path, file)
-                    #make sure is image
+                    # make sure is image
                     if os.path.isfile(filepath) and self.environment.valid_image(filepath):
                         image = filepath
                         source_image_path = os.path.join(folder_path, image)
@@ -370,3 +364,49 @@ class StorageHelper:
                 transformation_counter += 1
 
         print("Folder structure created successfully.")
+
+    def store_results(self, container, data3d,labels):
+        print("Saving file")
+        # create uniqe filename -> datetime and remove specialcharacters and append path to container
+        self.create_dir(container + "results")
+        filename = container + "results/" + re.sub(r'\W+', '',
+                                                   f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
+        print(filename)
+        # Convert the 3D list to a structured NumPy array
+        # dt = h5py.special_dtype(vlen=np.dtype('int32'))
+        # data_array = np.array([np.array(subarr, dtype=dt) for subarr in data3d])
+
+        # Convert the 3D Python list to a compatible data structure
+        converted_data = json.dumps(data3d)
+        converted_labels=json.dumps(labels)
+        save = {
+            "data": converted_data,
+            "labels": converted_labels
+        }
+        # Save the converted data to a JSON file
+        with open(filename, 'w') as file:
+            json.dump(save, file)
+
+        self.insert_new_result(container, filename)
+
+    def insert_new_result(self, container, resultfile):
+        #if full path is passed -> shorten to local path before storing in db
+        if ":" in resultfile:
+            resultfile=resultfile.split("backend/")[1]
+
+        print("Inserting new Result in " + container)
+        path = "images/" + container.split("images/")[1]
+        print(path)
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        c.execute("SELECT id FROM docker_containers WHERE path=?", (path,))
+        id = c.fetchone()
+        if id is not None and id[0] is not None and isinstance(id[0], int):
+            id = id[0]
+        else:
+            return "No ID found for container: " + container
+        print("id of docker is: " + str(id))
+        c.execute("INSERT INTO results (dockerid,date,resultfile) VALUES(?,?,?)",
+                  (id, datetime.datetime.now(), resultfile))
+        conn.commit()
+        conn.close()

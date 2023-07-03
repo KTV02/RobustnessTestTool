@@ -15,12 +15,10 @@
       <div v-if="selectedContainer">
         <div v-if="testResultsAvailable">
           <div class="score">{{ score }}</div>
-          <div class="graph-container">
-            <div v-for="label in labels" :key="label">
-              <div class="graph-label">{{ label }}</div>
-              <div class="graph">
-                <!-- Display graphs here -->
-              </div>
+          <div>
+            <div v-for="(label, index) in currentLabels" :key="index">
+              <h3>{{ label }}</h3>
+              <canvas :id="'chart-' + label" width="400" height="300"></canvas>
             </div>
           </div>
         </div>
@@ -88,6 +86,9 @@
 
 <script>
 import Loader from 'vue-spinner/src/ClipLoader.vue'
+import { Chart, registerables } from 'chart.js';
+
+Chart.register(...registerables);
 
 export default {
   components: {
@@ -111,8 +112,10 @@ export default {
       isBuildingDocker: false,
       buildingSuccess: false,
       tarDataUrl: "",
-      imageAlreadyPresent:false,
-      checkingImage:false,
+      imageAlreadyPresent: false,
+      checkingImage: false,
+      currentTransformations: [],
+      currentLabels: [],
     };
   },
   created() {
@@ -139,6 +142,42 @@ export default {
       }
     }
     ,
+    plotData() {
+      //this.currentTransformations=Array.from(this.currentTransformations)
+      console.log(this.currentTransformations)
+      console.log(typeof this.currentTransformations)
+
+
+      this.currentTransformations.forEach((transformation, index) => {
+        let values = transformation.map(subArray => subArray[0]);
+        let steps=Array.from({ length: values.length + 1 }, (_, index) => index);
+
+        const chartData = {
+          labels: steps,
+          datasets: [
+            {
+              label: 'Data',
+              data: values,
+              backgroundColor: 'rgba(75, 192, 192, 0.2)',
+              borderColor: 'rgba(75, 0, 192, 1)',
+              borderWidth: 10,
+            },
+          ],
+        };
+
+        const chartOptions = {
+          responsive: true,
+        };
+        console.log(`chart-${this.currentLabels[index]}`)
+        this.$nextTick(() => {
+        new Chart(`chart-${this.currentLabels[index]}`, {
+          type: 'line', // You can choose the chart type based on your requirement
+          data: chartData,
+          options: chartOptions,
+        });});
+
+      });
+    },
     async loadTransformationLabels() {
       try {
         const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
@@ -183,7 +222,10 @@ export default {
     selectContainer(container) {
       this.selectedContainer = container;
       console.log(this.selectedContainer)
+      console.log(document.readyState)
       this.loadTestResults(container);
+
+
     }
     ,
     findNameForContainer(container_id) {
@@ -198,7 +240,14 @@ export default {
       if (response.status === 200 && response.data == null) {
         this.testResultsAvailable = false;
       } else if (response.status === 200 && response.data != null) {
+        console.log("response data")
+        console.log(response.data)
+        this.currentTransformations = JSON.parse(response.data["data"]);
+        this.currentLabels = JSON.parse(response.data["labels"])
+        console.log(this.currentLabels)
+        console.log(typeof this.currentLabels)
         this.testResultsAvailable = true;
+        this.plotData()
       } else {
         console.error(response)
       }
@@ -230,12 +279,12 @@ export default {
         if (transformResponse.status === 200) {
           this.transformSuccess = true;
 
-          this.checkingImage=true;
+          this.checkingImage = true;
           //check if image for tar already exists on server
           const image_response = await this.$axios.post('/api/image-exists', {
             container_name: containerName,
           });
-          this.checkingImage=false;
+          this.checkingImage = false;
           console.log(image_response)
           if (image_response.data === "False") {
             this.isBuildingDocker = true;
@@ -250,7 +299,7 @@ export default {
             this.buildingSuccess = true;
 
           } else if (image_response.data === "True") {
-            this.imageAlreadyPresent =true;
+            this.imageAlreadyPresent = true;
             this.isRunningTests = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
             const testResponse = await this.$axios.post('/api/run-tests', {
@@ -260,6 +309,7 @@ export default {
             if (testResponse.status === 200) {
               this.testResultsAvailable = true;
               this.score = testResponse.data.score;
+              await this.loadTestResults(containerName)
               // Update other necessary data based on the received response
 
             } else {
