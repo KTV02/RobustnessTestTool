@@ -160,7 +160,7 @@ export default {
               data: values,
               backgroundColor: 'rgba(75, 192, 192, 0.2)',
               borderColor: 'rgba(75, 0, 192, 1)',
-              borderWidth: 10,
+              borderWidth: 1,
             },
           ],
         };
