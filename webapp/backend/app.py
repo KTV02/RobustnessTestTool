@@ -35,10 +35,11 @@ def add_docker_container():
 
 @app.route('/api/load-container-results', methods=['POST'])
 def load_container_results():
-    container_id = request.json.get('container')
-    print(container_id)
-    results = controller.load_container_results(container_id)
-    return jsonify(results)
+    container = request.json.get('container')
+    print(container)
+    result = controller.load_container_results(container)
+    print(result)
+    return jsonify(result)
 
 
 @app.route('/api/transform-images', methods=['POST'])
@@ -84,9 +85,16 @@ def run_tests():
 @app.route('/api/evaluate-results', methods=['POST'])
 def evaluate_results():
     container_name = request.json.get('container_name')
-    success,data = controller.evaluate_results(container_name)
+    success, data = controller.evaluate_results(container_name)
 
-    return jsonify(str(success))
+    # Prepare the response JSON
+    response = {
+        "success": success,
+        "data": data
+    }
+
+    # Return the response as JSON
+    return jsonify(response)
 
 
 @app.route('/api/available-transformations', methods=['GET'])
