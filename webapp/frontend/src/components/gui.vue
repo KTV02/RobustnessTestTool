@@ -16,7 +16,7 @@
         <div v-if="testResultsAvailable">
           <div class="score">{{ score }}</div>
           <div>
-            <div v-for="(label, index) in currentLabels" :key="index">
+            <div v-for="(label, index) in currentLabels.slice(1)" :key="index">
               <h3>{{ label }}</h3>
               <canvas :id="'chart-' + label" width="400" height="300"></canvas>
             </div>
@@ -116,6 +116,7 @@ export default {
       checkingImage: false,
       currentTransformations: [],
       currentLabels: [],
+      currentCharts:[],
     };
   },
   created() {
@@ -151,31 +152,33 @@ export default {
       this.currentTransformations.forEach((transformation, index) => {
         let values = transformation.map(subArray => subArray[0]);
         let steps=Array.from({ length: values.length + 1 }, (_, index) => index);
+        if(this.currentLabels[index]!="base") {
+          const chartData = {
+            labels: steps,
+            datasets: [
+              {
+                label: 'Data',
+                data: values,
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 0, 192, 1)',
+                borderWidth: 1,
+              },
+            ],
+          };
 
-        const chartData = {
-          labels: steps,
-          datasets: [
-            {
-              label: 'Data',
-              data: values,
-              backgroundColor: 'rgba(75, 192, 192, 0.2)',
-              borderColor: 'rgba(75, 0, 192, 1)',
-              borderWidth: 1,
-            },
-          ],
-        };
-
-        const chartOptions = {
-          responsive: true,
-        };
-        console.log(`chart-${this.currentLabels[index]}`)
-        this.$nextTick(() => {
-        new Chart(`chart-${this.currentLabels[index]}`, {
-          type: 'line', // You can choose the chart type based on your requirement
-          data: chartData,
-          options: chartOptions,
-        });});
-
+          const chartOptions = {
+            responsive: true,
+          };
+          console.log(`chart-${this.currentLabels[index]}`)
+          this.$nextTick(() => {
+            const cc=new Chart(`chart-${this.currentLabels[index]}`, {
+              type: 'line', // You can choose the chart type based on your requirement
+              data: chartData,
+              options: chartOptions,
+            });
+            this.currentCharts.push(cc)
+          });
+        }
       });
     },
     async loadTransformationLabels() {
@@ -223,6 +226,10 @@ export default {
       this.selectedContainer = container;
       console.log(this.selectedContainer)
       console.log(document.readyState)
+      this.currentCharts.forEach(chart => {
+        chart.destroy();
+      });
+      this.currentCharts = []; // Clear the array
       this.loadTestResults(container);
 
 
@@ -234,10 +241,11 @@ export default {
     ,
     async loadTestResults(container) {
       // Implement your logic to load test results based on the selected container
+      console.log(container)
       const response = await this.$axios.post('/api/load-container-results', {
         container: container,
       });
-      if (response.status === 200 && response.data == null) {
+      if (response.status === 200 && (response.data == null || response.data == "False")) {
         this.testResultsAvailable = false;
       } else if (response.status === 200 && response.data != null) {
         console.log("response data")

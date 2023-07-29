@@ -36,8 +36,9 @@ def add_docker_container():
 @app.route('/api/load-container-results', methods=['POST'])
 def load_container_results():
     container = request.json.get('container')
-    print(container)
+    print("Container selected: "+str(container))
     result = controller.load_container_results(container)
+    print("result is:")
     print(result)
     return jsonify(result)
 
@@ -78,6 +79,7 @@ def image_exists():
 def run_tests():
     container_name = request.json.get('container_name')
     success = controller.run_tests(container_name)
+    print(success)
 
     return jsonify(str(success))
 
