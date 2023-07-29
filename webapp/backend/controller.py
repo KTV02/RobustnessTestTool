@@ -16,9 +16,6 @@ from eval_helper import EvalHelper
 import h5py
 
 
-
-
-
 class Controller:
     def __init__(self):
         # Initialize the necessary helpers
@@ -29,8 +26,10 @@ class Controller:
         self.eval_helper = EvalHelper()
         print("meep")
         # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
-        print(self.evaluate_results("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-                                    "/backend/images/image9/"))
+        print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+                                    "/backend/images/image10/"))
+       # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+                            #  "/backend/images/5/")
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -38,8 +37,12 @@ class Controller:
 
     def load_container_results(self, container):
         results = self.storage_helper.get_results(container)
+        if results is None or len(results) == 0:
+            return "False"
         newest = len(results)
-        result=results[newest-1]
+        print("newest: "+str(newest))
+
+        result = results[newest - 1]
         print(result[0])
         return self.storage_helper.json_2_array(result[0])
 
@@ -57,7 +60,6 @@ class Controller:
         if success:
             success, message = self.storage_helper.save_docker_container(extract_path, name, size)
         return success, message
-
 
     def results_available(self, path):
         return self.storage_helper.check_results_exist(path)
@@ -83,9 +85,9 @@ class Controller:
             return answer
 
     def evaluate_results(self, container):
-        results = container + "output/"
+        results = container + "output/Stage_1/Sigmoid/"
         transformation_folder = container + self.environment.get_transformation_folder()
-        transformation_array,labels = self.get_stored_transformations(transformation_folder)
+        transformation_array, labels = self.get_stored_transformations(transformation_folder)
 
         solutions_path = container + "solutions/"
 
@@ -139,7 +141,7 @@ class Controller:
                 data3d[transformation_index][sample_index] = current_transformation
             print(str(data3d))
 
-        self.storage_helper.store_results(container, data3d,labels)
+        self.storage_helper.store_results(container, data3d, labels)
         # if only results for baseimage or none exists
         if len(data3d) <= 1:
             return False, "No results present"
@@ -241,7 +243,7 @@ class Controller:
         image = self.docker_helper.get_image_name(tarfile)
         winpath = "C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        linuxpath = winpath
+        #linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
@@ -251,7 +253,12 @@ class Controller:
                                                linuxpath + "output/")
         except Exception as e:
             return "Something went wrong while testing: " + str(e)
+
+        self.evaluate_results(dockerpath)
+
         return True
+
+
 
         # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
         #     structure = folder + "/" + "test" + "/"
@@ -281,6 +288,6 @@ class Controller:
                     transformation_names.append("base")
 
         label_counts = Counter(transformation_names)  # Count the occurrences of each label
-        labels=list(label_counts.keys())
+        labels = list(label_counts.keys())
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
-        return label_counts_2d,labels
+        return label_counts_2d, labels

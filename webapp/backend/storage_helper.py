@@ -115,11 +115,15 @@ class StorageHelper:
         return json_data
 
     def get_dockerpath(self, container_id):
+        print(container_id)
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
         result = c.fetchone()
+        if result is None:
+            return False
         dockerpath = result[0]
+        print(dockerpath)
         if "\\" in dockerpath:
             dockerpath = dockerpath.replace("\\", "/")
         conn.close()
