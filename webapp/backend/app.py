@@ -32,7 +32,6 @@ def add_docker_container():
     else:
         return jsonify({'message': message}), 400
 
-
 @app.route('/api/load-container-results', methods=['POST'])
 def load_container_results():
     container = request.json.get('container')

@@ -117,6 +117,7 @@ export default {
       currentTransformations: [],
       currentLabels: [],
       currentCharts:[],
+      currentMetrics:[],
     };
   },
   created() {
@@ -148,7 +149,7 @@ export default {
       console.log(this.currentTransformations)
       console.log(typeof this.currentTransformations)
 
-
+      this.currentTransformations
       this.currentTransformations.forEach((transformation, index) => {
         let values = transformation.map(subArray => subArray[0]);
         let steps=Array.from({ length: values.length + 1 }, (_, index) => index);
@@ -157,7 +158,7 @@ export default {
             labels: steps,
             datasets: [
               {
-                label: 'Data',
+                label: 'Data'+str(this.currentMetrics),
                 data: values,
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderColor: 'rgba(75, 0, 192, 1)',
@@ -252,6 +253,7 @@ export default {
         console.log(response.data)
         this.currentTransformations = JSON.parse(response.data["data"]);
         this.currentLabels = JSON.parse(response.data["labels"])
+        this.currentMetrics=JSON.parse(response.data["metrics"])
         console.log(this.currentLabels)
         console.log(typeof this.currentLabels)
         this.testResultsAvailable = true;

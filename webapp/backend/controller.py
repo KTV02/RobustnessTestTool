@@ -1,5 +1,6 @@
 import base64
 import json
+import math
 import os
 import re
 import shutil
@@ -16,6 +17,9 @@ from eval_helper import EvalHelper
 import h5py
 
 
+
+
+
 class Controller:
     def __init__(self):
         # Initialize the necessary helpers
@@ -28,8 +32,36 @@ class Controller:
         # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
         print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
                                     "/backend/images/image10/"))
-       # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-                            #  "/backend/images/5/")
+
+    # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+    #  "/backend/images/5/")
+
+    #Calculates average etc. of
+    def calculateStatisticalMetrics(self,current_transformation):
+        # Convert the list to a numpy array
+        data_array = np.array(current_transformation)
+
+        # Calculate the mean
+        mean = np.mean(data_array)
+
+        # Calculate the median
+        median = np.median(data_array)
+
+        # Calculate the standard deviation
+        std_deviation = np.std(data_array)
+
+        # Calculate the variance
+        variance = np.var(data_array)
+
+        # Calculate the minimum value
+        min_value = np.min(data_array)
+
+        # Calculate the maximum value
+        max_value = np.max(data_array)
+
+        # Calculate the sum of all elements
+        sum_of_elements = np.sum(data_array)
+        return [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -40,11 +72,13 @@ class Controller:
         if results is None or len(results) == 0:
             return "False"
         newest = len(results)
-        print("newest: "+str(newest))
+        print("newest: " + str(newest))
 
         result = results[newest - 1]
         print(result[0])
-        return self.storage_helper.json_2_array(result[0])
+        fullResult = self.storage_helper.json_2_array(result[0])
+
+        return fullResult
 
     def save_user_tar(self, tar_file):
         temp_path = self.environment.get_tar_dir() + "temp" + str(int(time.time())) + ".tar"
@@ -88,6 +122,7 @@ class Controller:
         results = container + "output/Stage_1/Sigmoid/"
         transformation_folder = container + self.environment.get_transformation_folder()
         transformation_array, labels = self.get_stored_transformations(transformation_folder)
+        metrics=[]
 
         solutions_path = container + "solutions/"
 
@@ -138,10 +173,11 @@ class Controller:
                         print(str(image_index) + " image index with result " + str(result))
                         current_transformation.append(result)
                 foldercount += 1
+                metrics.append(self.calculateStatisticalMetrics(current_transformation))
                 data3d[transformation_index][sample_index] = current_transformation
             print(str(data3d))
 
-        self.storage_helper.store_results(container, data3d, labels)
+        self.storage_helper.store_results(container, data3d, labels,metrics)
         # if only results for baseimage or none exists
         if len(data3d) <= 1:
             return False, "No results present"
@@ -243,7 +279,7 @@ class Controller:
         image = self.docker_helper.get_image_name(tarfile)
         winpath = "C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
         linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        #linuxpath = winpath
+        # linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
@@ -257,8 +293,6 @@ class Controller:
         self.evaluate_results(dockerpath)
 
         return True
-
-
 
         # for folder in self.storage_helper.get_folder_paths(linuxpath + self.environment.get_transformation_folder()):
         #     structure = folder + "/" + "test" + "/"
