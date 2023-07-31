@@ -369,7 +369,7 @@ class StorageHelper:
 
         print("Folder structure created successfully.")
 
-    def store_results(self, container, data3d,labels):
+    def store_results(self, container, data3d,labels,metrics):
         print("Saving file")
         # create uniqe filename -> datetime and remove specialcharacters and append path to container
         self.create_dir(container + "results")
@@ -383,9 +383,12 @@ class StorageHelper:
         # Convert the 3D Python list to a compatible data structure
         converted_data = json.dumps(data3d)
         converted_labels=json.dumps(labels)
+        converted_metrics=json.dumps(metrics)
         save = {
             "data": converted_data,
+            "metrics": converted_metrics,
             "labels": converted_labels
+
         }
         # Save the converted data to a JSON file
         with open(filename, 'w') as file:
