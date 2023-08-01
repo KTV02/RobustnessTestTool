@@ -86,7 +86,7 @@
 
 <script>
 import Loader from 'vue-spinner/src/ClipLoader.vue'
-import { Chart, registerables } from 'chart.js';
+import {Chart, registerables} from 'chart.js';
 
 Chart.register(...registerables);
 
@@ -116,8 +116,8 @@ export default {
       checkingImage: false,
       currentTransformations: [],
       currentLabels: [],
-      currentCharts:[],
-      currentMetrics:[],
+      currentCharts: [],
+      currentMetrics: [],
     };
   },
   created() {
@@ -149,16 +149,15 @@ export default {
       console.log(this.currentTransformations)
       console.log(typeof this.currentTransformations)
 
-      this.currentTransformations
       this.currentTransformations.forEach((transformation, index) => {
         let values = transformation.map(subArray => subArray[0]);
-        let steps=Array.from({ length: values.length + 1 }, (_, index) => index);
-        if(this.currentLabels[index]!="base") {
+        let steps = Array.from({length: values.length + 1}, (_, index) => index);
+        if (this.currentLabels[index] != "base") {
           const chartData = {
             labels: steps,
             datasets: [
               {
-                label: 'Data'+str(this.currentMetrics),
+                label: 'Data',
                 data: values,
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderColor: 'rgba(75, 0, 192, 1)',
@@ -166,13 +165,18 @@ export default {
               },
             ],
           };
-
           const chartOptions = {
             responsive: true,
+            plugins: {
+              subtitle: {
+                display: true,
+                text: 'Average:'+' Standard Deviation:'+' Median:'+' IQR:'
+              }
+            }
           };
           console.log(`chart-${this.currentLabels[index]}`)
           this.$nextTick(() => {
-            const cc=new Chart(`chart-${this.currentLabels[index]}`, {
+            const cc = new Chart(`chart-${this.currentLabels[index]}`, {
               type: 'line', // You can choose the chart type based on your requirement
               data: chartData,
               options: chartOptions,
@@ -253,7 +257,7 @@ export default {
         console.log(response.data)
         this.currentTransformations = JSON.parse(response.data["data"]);
         this.currentLabels = JSON.parse(response.data["labels"])
-        this.currentMetrics=JSON.parse(response.data["metrics"])
+        this.currentMetrics = JSON.parse(response.data["metrics"])
         console.log(this.currentLabels)
         console.log(typeof this.currentLabels)
         this.testResultsAvailable = true;
