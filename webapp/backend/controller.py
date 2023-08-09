@@ -17,9 +17,6 @@ from eval_helper import EvalHelper
 import h5py
 
 
-
-
-
 class Controller:
     def __init__(self):
         # Initialize the necessary helpers
@@ -36,32 +33,35 @@ class Controller:
     # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
     #  "/backend/images/5/")
 
-    #Calculates average etc. of
-    def calculateStatisticalMetrics(self,current_transformation):
-        # Convert the list to a numpy array
-        data_array = np.array(current_transformation)
+    # Calculates average etc. of
+    def calculateStatisticalMetrics(self, current_transformation):
+        if len(current_transformation) > 1:
+            # Convert the list to a numpy array
+            data_array = np.array(current_transformation)
 
-        # Calculate the mean
-        mean = np.mean(data_array)
+            # Calculate the mean
+            mean = np.mean(data_array)
 
-        # Calculate the median
-        median = np.median(data_array)
+            # Calculate the median
+            median = np.median(data_array)
 
-        # Calculate the standard deviation
-        std_deviation = np.std(data_array)
+            # Calculate the standard deviation
+            std_deviation = np.std(data_array)
 
-        # Calculate the variance
-        variance = np.var(data_array)
+            # Calculate the variance
+            variance = np.var(data_array)
 
-        # Calculate the minimum value
-        min_value = np.min(data_array)
+            # Calculate the minimum value
+            min_value = np.min(data_array)
 
-        # Calculate the maximum value
-        max_value = np.max(data_array)
+            # Calculate the maximum value
+            max_value = np.max(data_array)
 
-        # Calculate the sum of all elements
-        sum_of_elements = np.sum(data_array)
-        return [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]
+            # Calculate the sum of all elements
+            sum_of_elements = np.sum(data_array)
+            return [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]
+        else:
+            return None
 
     def load_docker_containers(self):
         results = self.storage_helper.load_docker_containers()
@@ -122,7 +122,7 @@ class Controller:
         results = container + "output/Stage_1/Sigmoid/"
         transformation_folder = container + self.environment.get_transformation_folder()
         transformation_array, labels = self.get_stored_transformations(transformation_folder)
-        metrics=[]
+        metrics = []
 
         solutions_path = container + "solutions/"
 
@@ -173,11 +173,12 @@ class Controller:
                         print(str(image_index) + " image index with result " + str(result))
                         current_transformation.append(result)
                 foldercount += 1
+                print("current transformation:" + str(current_transformation))
                 metrics.append(self.calculateStatisticalMetrics(current_transformation))
                 data3d[transformation_index][sample_index] = current_transformation
             print(str(data3d))
 
-        self.storage_helper.store_results(container, data3d, labels,metrics)
+        self.storage_helper.store_results(container, data3d, labels, metrics)
         # if only results for baseimage or none exists
         if len(data3d) <= 1:
             return False, "No results present"
@@ -325,3 +326,11 @@ class Controller:
         labels = list(label_counts.keys())
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
         return label_counts_2d, labels
+
+    def add_ground_truth(self,container):
+        truths=self.storage_helper.open_file_dialog()
+
+        solutiondir=os.path.join(self.storage_helper.get_dockerpath(container),"/solutions/")
+        self.storage_helper.create_dir(solutiondir)
+        self.storage_helper.extract_tar(truths,solutiondir)
+

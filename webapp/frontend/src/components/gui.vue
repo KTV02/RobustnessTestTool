@@ -25,8 +25,10 @@
         <div v-else>
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
-          <label for="fileInput">Choose a Test Image:</label>
+          <label for="fileInput">Upload Images for Testing:</label>
           <input type="file" accept=".png, .jpg, .jpeg, .txt" @change="setTestImage">
+          <br>
+          <button @click="setGroundTruth">Upload Ground Truths</button>
           <br><br>
           <div v-if="labels.length > 0">
             <div class="title-container">
@@ -48,7 +50,7 @@
               </div>
             </div>
             <button class="run-tests-button"
-                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''}"
+                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''||groundTruth===''}"
                     @click="runTests">Run Tests
             </button>
             <div v-if="isTransformingImages">
@@ -118,6 +120,7 @@ export default {
       currentLabels: [],
       currentCharts: [],
       currentMetrics: [],
+      groundTruth:"",
     };
   },
   created() {
@@ -144,6 +147,18 @@ export default {
       }
     }
     ,
+    async setGroundTruth(event) {
+      const container=this.selectedContainer
+     try {
+        const response = await this.$axios.post('/api/set-ground-truth',{
+        container: container,
+      }); // Update the URL with the correct backend URL
+        let success = response.data;
+        console.log(success)
+      } catch (error) {
+        console.error(error);
+      }
+    },
     plotData() {
       //this.currentTransformations=Array.from(this.currentTransformations)
       console.log(this.currentTransformations)
@@ -170,7 +185,7 @@ export default {
             plugins: {
               subtitle: {
                 display: true,
-                text: 'Average:'+' Standard Deviation:'+' Median:'+' IQR:'
+                text: 'Average:' + ' Standard Deviation:' + ' Median:' + ' IQR:'
               }
             }
           };
