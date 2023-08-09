@@ -7,6 +7,8 @@ import sqlite3
 import os
 import datetime
 import tarfile
+import tkinter as tk
+from tkinter import filedialog
 
 import h5py
 import numpy as np
@@ -105,7 +107,7 @@ class StorageHelper:
         conn.close()
         return result
 
-    def json_2_array(self,path):
+    def json_2_array(self, path):
         # Read the JSON file
         with open(path, 'r') as file:
             json_data = json.load(file)
@@ -241,17 +243,10 @@ class StorageHelper:
             type = ".png"
             testimage = name + type
 
+            self.extract_tar(extracted_path,output)
+
             # Verify if the extracted path points to a .tar file
-            if extracted_path.endswith('.tar'):
-                # Extract the contents of the .tar file to a specific folder
-                tar_output_folder = output
-                with tarfile.open(extracted_path, 'r') as tar:
-                    for file in tar.getmembers():
-                        if os.path.basename(file.name).lower().endswith(('.png', '.jpg')):
-                            tar.extract(file, path=tar_output_folder)
-                return tar_output_folder
-            else:
-                return "No path to tar file found in uploaded file: " + str(match)
+            return
         else:
             return "Not a supported Filetype: " + mime_type
 
@@ -369,7 +364,7 @@ class StorageHelper:
 
         print("Folder structure created successfully.")
 
-    def store_results(self, container, data3d,labels,metrics):
+    def store_results(self, container, data3d, labels, metrics):
         print("Saving file")
         # create uniqe filename -> datetime and remove specialcharacters and append path to container
         self.create_dir(container + "results")
@@ -382,8 +377,8 @@ class StorageHelper:
 
         # Convert the 3D Python list to a compatible data structure
         converted_data = json.dumps(data3d)
-        converted_labels=json.dumps(labels)
-        converted_metrics=json.dumps(metrics)
+        converted_labels = json.dumps(labels)
+        converted_metrics = json.dumps(metrics)
         save = {
             "data": converted_data,
             "metrics": converted_metrics,
@@ -397,9 +392,9 @@ class StorageHelper:
         self.insert_new_result(container, filename)
 
     def insert_new_result(self, container, resultfile):
-        #if full path is passed -> shorten to local path before storing in db
+        # if full path is passed -> shorten to local path before storing in db
         if ":" in resultfile:
-            resultfile=resultfile.split("backend/")[1]
+            resultfile = resultfile.split("backend/")[1]
 
         print("Inserting new Result in " + container)
         path = "images/" + container.split("images/")[1]
@@ -417,3 +412,25 @@ class StorageHelper:
                   (id, datetime.datetime.now(), resultfile))
         conn.commit()
         conn.close()
+
+    def open_file_dialog(self):
+        root = tk.Tk()
+        root.withdraw()  # Hide the main window
+
+        file_path = filedialog.askopenfilename(filetypes=[('tar files', '*.tar')])
+        if file_path is not None and self.is_tar_file(file_path):
+            return file_path
+        else:
+            return "False"
+
+    def extract_tar(self, extracted_path,output):
+        if extracted_path.endswith('.tar'):
+            # Extract the contents of the .tar file to a specific folder
+            tar_output_folder = output
+            with tarfile.open(extracted_path, 'r') as tar:
+                for file in tar.getmembers():
+                    if os.path.basename(file.name).lower().endswith(('.png', '.jpg')):
+                        tar.extract(file, path=tar_output_folder)
+            return tar_output_folder
+        else:
+            return "No path to tar file found"
