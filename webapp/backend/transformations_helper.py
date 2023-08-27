@@ -231,6 +231,21 @@ class TransformationsHelper:
 
         return image_with_vignette
 
+    def apply_motion_blur(self, image, kernel_size, angle):
+        # Generate the motion blur kernel
+        kernel = np.zeros((kernel_size, kernel_size))
+        kernel[int((kernel_size - 1) / 2), :] = np.ones(kernel_size)
+        kernel = kernel / kernel_size
+
+        # Rotate the kernel
+        kernel = transform.rotate(kernel, angle)
+
+        # Apply the kernel to the image
+        from skimage.filters import convolve  # You may need to add this import
+        blurred = convolve(image, kernel)
+
+        return blurred
+
     def apply_transformations(self, image_path, transformations, output):
         print(output)
         if not os.path.exists(output):
@@ -254,7 +269,8 @@ class TransformationsHelper:
             'smoke': (0, 1),  # Example values, adjust as needed
             'glare': (0, 10),  # Example values, adjust as needed
             'resolution': (1, 5),
-            'vignette': (0.4, 1.2)
+            'vignette': (0.4, 1.2),
+            'motion_blur': (3, 15)
         }
 
         def apply_transformation(transformation):
@@ -296,7 +312,8 @@ class TransformationsHelper:
                     transformed_image = self.lower_resolution(transformed_image, mapped_intensity)
                 elif transformation_label == 'vignette':
                     transformed_image = self.add_vignette(transformed_image, mapped_intensity)
-
+                elif transformation_label == 'motion_blur':
+                    transformed_image = self.apply_motion_blur(transformed_image, int(mapped_intensity), angle=45)
 
                 transformed_images.append(transformed_image)
                 transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))

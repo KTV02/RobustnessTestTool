@@ -4,9 +4,10 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import time
 from collections import Counter
-
+import sys
 import numpy as np
 
 from storage_helper import StorageHelper
@@ -25,10 +26,9 @@ class Controller:
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
-        print("meep")
         # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
-        print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-                                    "/backend/images/image10/"))
+        #print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+         #                           "/backend/images/image10/"))
 
     # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
     #  "/backend/images/5/")
@@ -328,9 +328,17 @@ class Controller:
         return label_counts_2d, labels
 
     def add_ground_truth(self,container):
-        truths=self.storage_helper.open_file_dialog()
-
-        solutiondir=os.path.join(self.storage_helper.get_dockerpath(container),"/solutions/")
+        result = subprocess.run([sys.executable, 'backend_mode.py'], stdout=subprocess.PIPE)
+        truths = result.stdout.decode('utf-8').strip() 
+        if truths != "False":
+            print(f"Selected file: {truths}")
+        else:
+            print("No valid file selected")
+        docker=self.storage_helper.get_dockerpath(container)
+        solutiondir=docker+"solutions/"
+        print("dockerpath")
+        print(solutiondir)
         self.storage_helper.create_dir(solutiondir)
         self.storage_helper.extract_tar(truths,solutiondir)
+
 
