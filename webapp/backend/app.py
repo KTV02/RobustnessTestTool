@@ -37,7 +37,8 @@ def add_docker_container():
 
 @app.route('/api/set-ground-truth', methods=['POST'])
 def add_ground_truth():
-    return controller.add_ground_truth(request.json.get('container'))
+    controller.add_ground_truth(request.json.get('container'))
+    return jsonify("sucess")
 
 
 @app.route('/api/load-container-results', methods=['POST'])

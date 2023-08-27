@@ -7,8 +7,8 @@ import sqlite3
 import os
 import datetime
 import tarfile
-import tkinter as tk
-from tkinter import filedialog
+
+
 
 import h5py
 import numpy as np
@@ -413,17 +413,10 @@ class StorageHelper:
         conn.commit()
         conn.close()
 
-    def open_file_dialog(self):
-        root = tk.Tk()
-        root.withdraw()  # Hide the main window
 
-        file_path = filedialog.askopenfilename(filetypes=[('tar files', '*.tar')])
-        if file_path is not None and self.is_tar_file(file_path):
-            return file_path
-        else:
-            return "False"
 
     def extract_tar(self, extracted_path,output):
+        print(extracted_path)
         if extracted_path.endswith('.tar'):
             # Extract the contents of the .tar file to a specific folder
             tar_output_folder = output
