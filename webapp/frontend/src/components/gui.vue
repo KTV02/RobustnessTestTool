@@ -25,11 +25,22 @@
         <div v-else>
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
-          <label for="fileInput">Upload Images for Testing:</label>
-          <input type="file" accept=".png, .jpg, .jpeg, .txt" @change="setTestImage">
+          <button @click="setTestImage">Upload Test Images</button>
+
           <br>
           <button @click="setGroundTruth">Upload Ground Truths</button>
           <br><br>
+          <!-- Info Box -->
+          <div class="info-box">
+            <h4>Image Formatting Guidelines:</h4>
+            <ul>
+              <li>Images must be JPG or PNG</li>
+              <li><strong>Format for Images&GroundTruths:</strong> <br> imagename, imagename1,...,imagenameX</li>
+              <li>Images&GroundTruths must be inside their respective .tar folder</li>
+
+            </ul>
+          </div>
+          <br>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
@@ -50,7 +61,7 @@
               </div>
             </div>
             <button class="run-tests-button"
-                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''||groundTruth===''}"
+                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||!testImageSet||!groundTruthSet}"
                     @click="runTests">Run Tests
             </button>
             <div v-if="isTransformingImages">
@@ -58,6 +69,9 @@
             </div>
             <div v-if="transformSuccess">
               <p>Transforming Testdata &#x2705;</p>
+            </div>
+            <div v-if="transformFailure">
+              <p>Transforming Testdata &#x2717;</p>
             </div>
             <div v-if="checkingImage">
               <p>Checking if image already present...</p>
@@ -67,6 +81,9 @@
             </div>
             <div v-if="buildingSuccess">
               <p>Building Docker &#x2705;</p>
+            </div>
+            <div v-if="buildingFailure">
+              <p>Building Docker &#x2717;</p>
             </div>
             <div v-if="imageAlreadyPresent">
               <p>Docker Image already present on Server &#x2705;</p>
@@ -82,7 +99,16 @@
         Run tests to display results
       </div>
     </div>
-    <button class="add-docker-button" @click="openAddDockerDialog">Add Docker Container</button>
+    <div class="button-container">
+      <button class="add-docker-button" :class="{ 'disabled': isTransformingImages||isRunningTests}"
+              @click="openAddDockerDialog">Add Docker Container
+      </button>
+      <button class="delete-docker-button"
+              :class="{ 'disabled': isTransformingImages||isRunningTests||selectedContainer==null}"
+              @click="openDeleteDockerDialog">Delete Container
+      </button>
+    </div>
+
   </div>
 </template>
 
@@ -109,18 +135,23 @@ export default {
       sliderValues: [], // Add sliderValues property
       defaultSliderValue: 1,
       testImage: "",
+      groundTruth: "",
+      testImageSet: false,
+      groundTruthSet: false,
       isRunningTests: false,
       transformSuccess: false,
+      buildingFailure: false,
+      transformFailure: false,
       isBuildingDocker: false,
       buildingSuccess: false,
       tarDataUrl: "",
       imageAlreadyPresent: false,
       checkingImage: false,
       currentTransformations: [],
+      numberOfMetrics: 4,
       currentLabels: [],
       currentCharts: [],
       currentMetrics: [],
-      groundTruth:"",
     };
   },
   created() {
@@ -129,7 +160,7 @@ export default {
     this.loadTransformationLabels();
   },
   methods: {
-    async setTestImage(event) {
+    async setTestImageFrontend(event) {
       const file = event.target.files[0];
       if (file) {
         // Create a new FileReader instance
@@ -145,16 +176,80 @@ export default {
         // Read the file and convert it to a data URL
         reader.readAsDataURL(file);
       }
+    },
+    async openDeleteDockerDialog() {
+      if (!this.isRunningTests || !this.isTransformingImages || this.selectedContainer != null) {
+
+
+        const userConfirmed = window.confirm("Really delete this container?");
+
+        if (userConfirmed) {
+          try {
+            console.log(this.selectedContainer)
+            const response = await this.$axios.delete('/api/delete-docker-container', {
+              data: {
+                container: this.selectedContainer,
+              }
+            }); // Update the URL with the correct backend endpoint
+            let success = response.data;
+            console.log(success);
+            if (success == null) {
+              alert("No response from Backend! Operation failed")
+            } else if (success) {
+              this.selectedContainer = null
+              await this.loadDockerContainers()
+              alert("container successfully deleted")
+
+            } else {
+              alert(success)
+            }
+
+            // Perform any other actions you'd like to take upon successful deletion,
+            // such as updating the UI
+          } catch (error) {
+            console.error(error);
+
+            // Perform any other actions you'd like to take upon failure,
+            // such as showing an error message to the user
+          }
+        } else {
+          console.log("User cancelled the deletion.");
+        }
+        // Logic for deleting the Docker container
+      } else {
+        console.log("Delete button deactivated right now! Check conditions")
+      }
     }
     ,
-    async setGroundTruth(event) {
-      const container=this.selectedContainer
-     try {
-        const response = await this.$axios.post('/api/set-ground-truth',{
-        container: container,
-      }); // Update the URL with the correct backend URL
+    async setTestImage(event) {
+      const container = this.selectedContainer
+      try {
+        const response = await this.$axios.put('/api/set-test-images', {
+          container: container,
+        }); // Update the URL with the correct backend URL
         let success = response.data;
-        console.log(success)
+        console .log(success)
+        if (success === "success") {
+          this.testImageSet = true
+        } else {
+          alert(success)
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    async setGroundTruth(event) {
+      const container = this.selectedContainer
+      try {
+        const response = await this.$axios.put('/api/set-ground-truth', {
+          container: container,
+        }); // Update the URL with the correct backend URL
+        let success = response.data;
+        if (success === "success") {
+          this.groundTruthSet = true
+        } else {
+          alert(success)
+        }
       } catch (error) {
         console.error(error);
       }
@@ -163,7 +258,7 @@ export default {
       //this.currentTransformations=Array.from(this.currentTransformations)
       console.log(this.currentTransformations)
       console.log(typeof this.currentTransformations)
-
+      let metricCounter = 0
       this.currentTransformations.forEach((transformation, index) => {
         let values = transformation.map(subArray => subArray[0]);
         let steps = Array.from({length: values.length + 1}, (_, index) => index);
@@ -180,12 +275,18 @@ export default {
               },
             ],
           };
+          let metricString = "Metrics not available"
+          //check if metrics are available and correct amount of metrics
+          if (this.currentMetrics != null && this.currentMetrics.length % this.numberOfMetrics === 0) {
+            metricString = 'Average:' + this.currentMetrics[metricCounter * this.numberOfMetrics] + ' Standard Deviation:' + this.currentMetrics[(metricCounter + 1) * this.numberOfMetrics] + ' Median:' + this.currentMetrics[(metricCounter + 2) * this.numberOfMetrics] + ' IQR:' + this.currentMetrics[(metricCounter + 3) * this.numberOfMetrics]
+          }
+
           const chartOptions = {
             responsive: true,
             plugins: {
               subtitle: {
                 display: true,
-                text: 'Average:' + ' Standard Deviation:' + ' Median:' + ' IQR:'
+                text: metricString
               }
             }
           };
@@ -199,6 +300,7 @@ export default {
             this.currentCharts.push(cc)
           });
         }
+        metricCounter++
       });
     },
     async loadTransformationLabels() {
@@ -233,7 +335,7 @@ export default {
     ,
     async loadDockerContainers() {
       try {
-        const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
+        const response = await this.$axios.get('/api/get-docker-containers'); // Update the URL with the correct backend URL
         this.dockerList = response.data;
         console.log(this.dockerList)
         this.dockerListLoaded = true; // Set the flag to indicate that the data has been loaded
@@ -285,6 +387,7 @@ export default {
     }
     ,
     async runTests() {
+
       try {
         //This takes the indexes of labels and sliderValues only when the corresponding checkbox is checked
         const transformationArray = this.checkboxes.reduce((result, checkbox, index) => {
@@ -299,13 +402,20 @@ export default {
         //Transform Testimage
         this.isTransformingImages = true;
         const transformResponse = await this.$axios.post('/api/transform-images', {
-          image_path: testImageUrl, // Replace with the actual image path value
           transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
         this.isTransformingImages = false;
+
         console.log(transformResponse.status);
         if (transformResponse.status === 200) {
+          let responseContent = transformResponse.data
+          console.log(responseContent)
+          if (responseContent == null || (typeof responseContent === 'string' && String(responseContent) !== 'True') || (typeof responseContent === 'string' && String(responseContent) === 'False')) {
+            alert(String(responseContent))
+            this.transformFailure = true;
+            throw new Error(String(responseContent))
+          }
           this.transformSuccess = true;
 
           this.checkingImage = true;
@@ -317,20 +427,24 @@ export default {
           console.log(image_response)
           if (image_response.data === "False") {
             this.isBuildingDocker = true;
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             const buildResponse = await this.$axios.post('/api/build-docker', {
               container_name: containerName,
             });
             this.isBuildingDocker = false;
-            if (!(buildResponse.status === 200)) {
-              return false
+            let responseContent = transformResponse.data
+            if (responseContent == null || !(buildResponse.status === 200) || typeof responseContent === 'string' || !responseContent) {
+              alert("Error while transforming images")
+              this.transformFailure = true;
+              throw new Error(String(responseContent))
             }
             this.buildingSuccess = true;
+
 
           } else if (image_response.data === "True") {
             this.imageAlreadyPresent = true;
             this.isRunningTests = true;
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             const testResponse = await this.$axios.post('/api/run-tests', {
               container_name: containerName,
             });
@@ -344,7 +458,7 @@ export default {
             } else {
               alert("An Error occurred while running Tests")
             }
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
           } else {
             alert("An Error occurred while building docker container")
@@ -360,64 +474,72 @@ export default {
     }
     ,
     async openAddDockerDialog() {
-      try {
-        // Open file dialog to select a .tar file
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.tar, .txt';
-        fileInput.addEventListener('change', async () => {
-          const file = fileInput.files[0];
-          if (!file) return;
+      if (!this.isRunningTests || !this.isTransformingImages) {
+        try {
+          // Open file dialog to select a .tar file
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = '.tar, .txt';
+          fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
 
-          // Ask the user for the container name
-          const containerName = prompt('Enter the name for the Docker container');
-          if (!containerName) return;
+            // Ask the user for the container name
+            const containerName = prompt('Enter the name for the Docker container');
+            if (!containerName) return;
 
-          try {
-            // Create a FormData object and append the file to it
-            const formData = new FormData();
+            try {
+              // Create a FormData object and append the file to it
+              const formData = new FormData();
 
-            //TEMPORARY
+              //TEMPORARY
 
-            formData.append('tarfile', file);
+              formData.append('tarfile', file);
 
-            // Append the container name to the FormData object
-            formData.append('container_name', containerName);
-            console.log(formData)
-            // Send the FormData object to the server using Axios
-            const response = await this.$axios.post('/api/add-docker-container', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            });
-            // Handle the response
+              // Append the container name to the FormData object
+              formData.append('container_name', containerName);
+              console.log(formData)
+              // Send the FormData object to the server using Axios
+              const response = await this.$axios.put('/api/add-docker-container', formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              });
+              // Handle the response
 
-            // Check the response for success and update the dockerList
-            if (response.data.message === 'Docker container added successfully') {
-              await this.loadDockerContainers();
-            } else {
-              console.error(response.data.message);
+              // Check the response for success and update the dockerList
+              if (response.data.message === 'Docker container added successfully') {
+                await this.loadDockerContainers();
+              } else {
+                console.error(response.data.message);
+              }
+            } catch (error) {
+              alert("Adding container failed!")
+              console.error(error);
             }
-          } catch (error) {
-            alert("Adding container failed!")
-            console.error(error);
-          }
-        });
+          });
 
-        // Trigger the file input dialog
-        fileInput.click();
-      } catch (error) {
-        console.error(error);
+          // Trigger the file input dialog
+          fileInput.click();
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        console.log("Add Docker Button deactivated right now! Check conditions")
       }
     }
     ,
-  },
+  }
+  ,
   computed: {
     isRunButtonActive() {
       return this.checkboxes.includes(1);
-    },
-  },
-};
+    }
+    ,
+  }
+  ,
+}
+;
 </script>
 <style scoped>
 .docker-item {
@@ -485,17 +607,6 @@ export default {
   cursor: pointer;
 }
 
-.add-docker-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: #ffffff;
-  border: none;
-  cursor: pointer;
-}
-
 .run-tests-button.disabled {
   background-color: #cccccc;
   cursor: not-allowed;
@@ -547,4 +658,41 @@ input[type="range"] {
 input[type="checkbox"] {
   margin-right: 8px;
 }
+
+.delete-docker-button {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  cursor: pointer;
+}
+
+.add-docker-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  padding: 10px 20px;
+  margin: 5px;
+}
+
+.button-container {
+  display: inline-block;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+}
+
+.add-docker-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.delete-docker-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+
 </style>

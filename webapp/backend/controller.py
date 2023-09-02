@@ -101,22 +101,27 @@ class Controller:
     def get_result_score(self, path):
         return self.storage_helper.get_result_score(path)
 
-    def transform_images(self, container, images, transformations):
-        output = str(self.storage_helper.get_dockerpath(container)) + self.environment.get_transformation_folder()
+    def transform_images(self, container, transformations):
+        dockerpath=str(self.storage_helper.get_dockerpath(container))
+        output =  dockerpath+ self.environment.get_transformation_folder()
+        images=dockerpath+"transformations/"
+        ready=self.is_ready_to_run(container)
+        if ready is not None and not isinstance(ready,str) and ready:
+            if os.path.isfile(images):
+                # If the image path points to a file, apply transformations directly
+                answer = self.transformations_helper.apply_transformations(images, transformations, output)
+            elif os.path.isdir(images):
+                # If the image path points to a folder, call input_folder_handler function
+                answer = self.input_folder_handler(images, transformations, output)
+            else:
+                return "Invalid image path: " + str(images)
 
-        if os.path.isfile(images):
-            # If the image path points to a file, apply transformations directly
-            answer = self.transformations_helper.apply_transformations(images, transformations, output)
-        elif os.path.isdir(images):
-            # If the image path points to a folder, call input_folder_handler function
-            answer = self.input_folder_handler(images, transformations, output)
+            if answer != "False":
+                return "True"
+            else:
+                return answer
         else:
-            return "Invalid image path: " + str(images)
-
-        if answer != "False":
-            return "True"
-        else:
-            return answer
+            return ready
 
     def evaluate_results(self, container):
         results = container + "output/Stage_1/Sigmoid/"
@@ -263,6 +268,7 @@ class Controller:
     def exit(self):
         pass
 
+#FRONTEND MODE; noT USED CURRENTLY
     def save_test_image(self, data_url, container_name):
         self.storage_helper.create_dir(
             self.storage_helper.get_dockerpath(container_name) + self.environment.get_transformation_folder())
@@ -327,18 +333,31 @@ class Controller:
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
         return label_counts_2d, labels
 
-    def add_ground_truth(self,container):
+    def add_images(self, container, path):
         result = subprocess.run([sys.executable, 'backend_mode.py'], stdout=subprocess.PIPE)
-        truths = result.stdout.decode('utf-8').strip() 
-        if truths != "False":
+        truths = result.stdout.decode('utf-8').strip()
+        if truths is not None and truths != "" and truths != "False":
             print(f"Selected file: {truths}")
         else:
             print("No valid file selected")
+            raise FileNotFoundError("No valid file selected")
         docker=self.storage_helper.get_dockerpath(container)
-        solutiondir=docker+"solutions/"
+        solutiondir=docker+path
         print("dockerpath")
         print(solutiondir)
         self.storage_helper.create_dir(solutiondir)
         self.storage_helper.extract_tar(truths,solutiondir)
+
+    def is_ready_to_run(self,container):
+        if not self.image_exists(container):
+            return "Model not present"
+        if not self.storage_helper.testdata_exists(container):
+            return "Testdata not present"
+        return True
+
+    def delete_docker_container(self, container):
+        return self.storage_helper.delete_docker_container(container)
+
+
 
 

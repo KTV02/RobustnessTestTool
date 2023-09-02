@@ -7,9 +7,10 @@ from skimage import util, filters, transform
 from skimage.util import img_as_ubyte
 import skimage.exposure as exposure
 from skimage import img_as_float
+from scipy.ndimage import convolve
 from skimage.transform import resize
 from skimage.io import imread
-from PIL import Image, ImageDraw, ImageOps, ImageChops
+from PIL import Image, ImageDraw, ImageOps, ImageChops, ImageFilter
 import skimage.io as io
 from skimage.filters import gaussian
 from skimage.transform import rescale
@@ -231,20 +232,18 @@ class TransformationsHelper:
 
         return image_with_vignette
 
-    def apply_motion_blur(self, image, kernel_size, angle):
-        # Generate the motion blur kernel
-        kernel = np.zeros((kernel_size, kernel_size))
-        kernel[int((kernel_size - 1) / 2), :] = np.ones(kernel_size)
-        kernel = kernel / kernel_size
+    def apply_motion_blur(self, image, radius, angle):
+        if isinstance(image, np.ndarray):
+            image = Image.fromarray(image.astype('uint8')).convert('RGB')
 
-        # Rotate the kernel
-        kernel = transform.rotate(kernel, angle)
+        blurred = image.filter(ImageFilter.GaussianBlur(radius=radius))
+        # Implement angle-based motion blur if needed. For now, this only applies Gaussian blur.
 
-        # Apply the kernel to the image
-        from skimage.filters import convolve  # You may need to add this import
-        blurred = convolve(image, kernel)
+        if isinstance(image, np.ndarray):
+            blurred = np.array(blurred)
 
         return blurred
+
 
     def apply_transformations(self, image_path, transformations, output):
         print(output)
