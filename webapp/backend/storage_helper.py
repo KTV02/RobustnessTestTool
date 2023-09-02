@@ -7,8 +7,7 @@ import sqlite3
 import os
 import datetime
 import tarfile
-
-
+from PIL import Image
 
 import h5py
 import numpy as np
@@ -57,7 +56,7 @@ class StorageHelper:
                     date TEXT,
                     score DOUBLE,
                     resultfile TEXT,
-                    FOREIGN KEY (dockerid) REFERENCES docker_containers(id)
+                    FOREIGN KEY (dockerid) REFERENCES docker_containers(id) ON DELETE CASCADE
                 )
                 '''
         # Execute the query
@@ -117,7 +116,6 @@ class StorageHelper:
         return json_data
 
     def get_dockerpath(self, container_id):
-        print(container_id)
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
@@ -125,11 +123,11 @@ class StorageHelper:
         if result is None:
             return False
         dockerpath = result[0]
-        print(dockerpath)
+        print("this is the dockerpath " + str(dockerpath))
         if "\\" in dockerpath:
             dockerpath = dockerpath.replace("\\", "/")
         conn.close()
-        return dockerpath
+        return os.path.normpath(dockerpath)
 
     def get_result_score(self, dockerid):
         conn = sqlite3.connect(self.environment.get_database_file())
@@ -214,7 +212,7 @@ class StorageHelper:
         return tarpath
 
     def save_test_image(self, data_url, container_name):
-        dockerpath = self.get_dockerpath(container_name)
+        dockerpath = str(self.get_dockerpath(container_name))
         output = dockerpath + self.environment.get_transformation_folder()
 
         # Extract the file type and data from the data URL
@@ -243,7 +241,7 @@ class StorageHelper:
             type = ".png"
             testimage = name + type
 
-            self.extract_tar(extracted_path,output)
+            self.extract_tar(extracted_path, output)
 
             # Verify if the extracted path points to a .tar file
             return
@@ -413,9 +411,7 @@ class StorageHelper:
         conn.commit()
         conn.close()
 
-
-
-    def extract_tar(self, extracted_path,output):
+    def extract_tar(self, extracted_path, output):
         print(extracted_path)
         if extracted_path.endswith('.tar'):
             # Extract the contents of the .tar file to a specific folder
@@ -427,3 +423,77 @@ class StorageHelper:
             return tar_output_folder
         else:
             return "No path to tar file found"
+
+    def testdata_exists(self, container):
+        containerpath = str(self.get_dockerpath(container))
+        testimages = self.has_images(containerpath + "transformations/")
+        groundtruths = self.has_images(containerpath + "solutions/")
+        if isinstance(testimages, str) or isinstance(groundtruths, str):
+            return "Error occurred while checking testdata"
+        if testimages is None or not testimages:
+            return "Testimages not present"
+        if groundtruths is None or not groundtruths:
+            return "Ground truths not present"
+        return True
+
+    def has_images(self, folder_path):
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                try:
+                    with Image.open(os.path.join(root, file)) as img:
+                        img.verify()
+                        return True
+                except:
+                    print("error has occured while checking if testdata present")
+        return False
+
+    def container_exists(self, container):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        c.execute("SELECT id FROM docker_containers WHERE id=?", (container,))
+        result = c.fetchone()
+        conn.close()
+        if not result:
+            return False
+        else:
+            return True
+
+    def delete_folder(self, path: str) -> None:
+        """
+        Deletes a folder at the given path if it exists.
+        :param path: The path of the folder to delete.
+        """
+        print(os.path.exists(path))
+        if os.path.exists(path) and os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            return False
+
+        if os.path.exists(path) and os.path.isdir(path):
+            return False
+
+        return True
+
+    def delete_docker_container(self, container):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        # check if docker container to be deleted actually exists
+        if not self.container_exists(container):
+            return "Container to be deleted does not exist"
+
+        # deleting container files
+        path = os.path.join(os.getcwd(), str(self.get_dockerpath(container)))
+        print("Dockerpath: " + str(path))
+        if not self.delete_folder(path):
+            return "Container files could not be deleted!"
+
+        # deleting docker container from database
+        c.execute("DELETE FROM docker_containers WHERE id =?", (container,))
+        conn.commit()
+        # check if successfull
+        if self.container_exists(container):
+            return "Container could not be deleted from DB!"
+
+        conn.close()
+
+        return True
