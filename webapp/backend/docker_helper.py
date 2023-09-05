@@ -56,6 +56,12 @@ class DockerHelper:
             return False
 
     def get_image_name(self, tarfilepath):
+        """
+        Checks the name of a docker container with a segmentation model
+        :param tarfilepath: the path to the tar file containing the model
+        :return: the name of the docker container inside the tar file
+        """
+
         # Open the tar file in read mode
         print(tarfilepath)
         with tarfile.open(tarfilepath, 'r') as tar:

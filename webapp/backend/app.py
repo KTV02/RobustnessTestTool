@@ -21,22 +21,35 @@ def get_docker_containers():
 @app.route('/api/delete-docker-container', methods=['DELETE'])
 def delete_docker_container():
     container = request.json.get('container')
-    print("Container to be deleted: "+str(container))
+    print("Container to be deleted: " + str(container))
     success = controller.delete_docker_container(container)
     return jsonify(success)
 
 
 @app.route('/api/add-docker-container', methods=['PUT'])
 def add_docker_container():
-    container_name = request.form['container_name']
-    # TEMPORARY
-    tar_path = request.files['tarfile']
-    # tar_path=""
+    container_name = request.json.get('name')
+    print("Container name:"+str(container_name))
+    try:
+        success, message,size = controller.store_container(container_name)
+    except FileNotFoundError as e:
+        return jsonify(str(e))
 
-    success, message = controller.store_container(tar_path, container_name)
     print("Registration: " + message)
     if success:
-        return jsonify({'message': 'Docker container added successfully'})
+        return jsonify({'message': 'Docker container added successfully. Size of model: ' + str(size) + ' bytes'})
+    else:
+        return jsonify({'message': message}), 400
+
+
+@app.route('/api/add-docker-container-frontend', methods=['PUT'])
+def add_docker_container_frontend():
+    container_name = request.form['container_name']
+    tar_path = request.files['tarfile']
+
+    success, message, size = controller.store_container_frontend(tar_path, container_name)
+    if success:
+        return jsonify({'message': 'Docker container added successfully. Size of model: ' + str(size) + ' bytes'})
     else:
         return jsonify({'message': message}), 400
 

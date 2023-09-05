@@ -179,7 +179,7 @@ export default {
     },
     async openDeleteDockerDialog() {
       if (!this.isRunningTests || !this.isTransformingImages || this.selectedContainer != null) {
-
+        await this.loadDockerContainers()
 
         const userConfirmed = window.confirm("Really delete this container?");
 
@@ -228,7 +228,7 @@ export default {
           container: container,
         }); // Update the URL with the correct backend URL
         let success = response.data;
-        console .log(success)
+        console.log(success)
         if (success === "success") {
           this.testImageSet = true
         } else {
@@ -345,6 +345,7 @@ export default {
     }
     ,
     selectContainer(container) {
+
       this.selectedContainer = container;
       console.log(this.selectedContainer)
       console.log(document.readyState)
@@ -476,6 +477,36 @@ export default {
     async openAddDockerDialog() {
       if (!this.isRunningTests || !this.isTransformingImages) {
         try {
+          // Ask the user for the container name
+          const containerName = prompt('Enter the name for the Docker container');
+          if (!containerName) return;
+          console.log("The entered container name is: "+containerName)
+          // Send the FormData object to the server using Axios
+          const response = await this.$axios.put('/api/add-docker-container',{
+                name: containerName,
+          });
+          // Handle the response
+
+          // Check the response for success and update the dockerList
+          alert(response.data.message)
+          await this.loadDockerContainers();
+        } catch (error) {
+          alert("Adding container failed!")
+          console.error(error);
+        }
+
+      } else {
+        console.log("Add Docker Button deactivated right now! Check conditions")
+      }
+
+    }
+    ,
+    async openAddDockerDialogFrontend() {
+      //LEGACY CODE - Frontend MODE
+      if (!this.isRunningTests || !this.isTransformingImages) {
+        try {
+
+
           // Open file dialog to select a .tar file
           const fileInput = document.createElement('input');
           fileInput.type = 'file';
@@ -508,11 +539,8 @@ export default {
               // Handle the response
 
               // Check the response for success and update the dockerList
-              if (response.data.message === 'Docker container added successfully') {
-                await this.loadDockerContainers();
-              } else {
-                console.error(response.data.message);
-              }
+              alert(response.data.message)
+              await this.loadDockerContainers();
             } catch (error) {
               alert("Adding container failed!")
               console.error(error);

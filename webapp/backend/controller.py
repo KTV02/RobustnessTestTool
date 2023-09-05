@@ -27,8 +27,8 @@ class Controller:
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
         # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
-        #print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-         #                           "/backend/images/image10/"))
+        # print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
+        #                           "/backend/images/image10/"))
 
     # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
     #  "/backend/images/5/")
@@ -81,32 +81,51 @@ class Controller:
         return fullResult
 
     def save_user_tar(self, tar_file):
+        """
+        Only used in frontend mode
+        :param tar_file: the tar file to save as link from frontend
+        :return: the path to the locally stored temp path
+        """
         temp_path = self.environment.get_tar_dir() + "temp" + str(int(time.time())) + ".tar"
         # save tar file locally
         tar_file.save(temp_path)
         return temp_path
 
-    def store_container(self, tar_path, name):
+    def store_container(self, name):
+        tar = self.user_select_tar()
+        success, message, extract_path, tar_file = self.storage_helper.store_docker(tar)
+        size = os.path.getsize(tar_file)
+        if success:
+            success, message = self.storage_helper.save_docker_container(extract_path, tar_file, name, size)
+        return success, message, size
+
+    def store_container_frontend(self, tar_path, name):
         print(str(tar_path))
         # store docker container
-        success, message, extract_path, size = self.storage_helper.store_docker(tar_path)
+        success, message, extract_path, size = self.storage_helper.store_docker_frontend(tar_path)
         # if store worked -> create database
         if success:
-            success, message = self.storage_helper.save_docker_container(extract_path, name, size)
-        return success, message
+            success, message = self.storage_helper.save_docker_container(extract_path, None, name, size)
+        return success, message, size
 
-    def results_available(self, path):
-        return self.storage_helper.check_results_exist(path)
+    # def results_available(self, path):
+    #     return self.storage_helper.check_results_exist(path)
 
     def get_result_score(self, path):
         return self.storage_helper.get_result_score(path)
 
     def transform_images(self, container, transformations):
-        dockerpath=str(self.storage_helper.get_dockerpath(container))
-        output =  dockerpath+ self.environment.get_transformation_folder()
-        images=dockerpath+"transformations/"
-        ready=self.is_ready_to_run(container)
-        if ready is not None and not isinstance(ready,str) and ready:
+        """
+        Applies the interference effects to the images
+        :param container: the container of which the test data is transformed
+        :param transformations: the desired interference effects as a string array of effect labels
+        :return: an Error message or the transformed images
+        """
+        dockerpath = str(self.storage_helper.get_folderpath(container))
+        output = dockerpath + self.environment.get_transformation_folder()
+        images = os.path.join(dockerpath,"transformations/").replace("\\","/")
+        ready = self.is_ready_to_run(container)
+        if ready is not None and not isinstance(ready, str) and ready:
             if os.path.isfile(images):
                 # If the image path points to a file, apply transformations directly
                 answer = self.transformations_helper.apply_transformations(images, transformations, output)
@@ -124,12 +143,12 @@ class Controller:
             return ready
 
     def evaluate_results(self, container):
-        results = container + "output/Stage_1/Sigmoid/"
-        transformation_folder = container + self.environment.get_transformation_folder()
+        results = os.path.join(container, "output/Stage_1/Sigmoid/").replace("\\","/")
+        transformation_folder = os.path.join(container, self.environment.get_transformation_folder()).replace("\\","/")
         transformation_array, labels = self.get_stored_transformations(transformation_folder)
         metrics = []
 
-        solutions_path = container + "solutions/"
+        solutions_path = os.path.join(container,"solutions/").replace("\\","/")
 
         # Preallocate the list of arrays
         data3d = []
@@ -190,6 +209,9 @@ class Controller:
         return True, data3d
 
     def input_folder_handler(self, input_folder, transformations, output):
+        print("input folder handler:")
+        print(input_folder)
+        print(transformations)
         # Copy the input folder structure without raw.png images
         copied_folders = []
         directories = []
@@ -204,6 +226,7 @@ class Controller:
         elif len(directories) == 0:
             # if no directory is found in input folder, it could be that pwd is already inside the input folder
             current_directory = os.getcwd()
+            print("MY CURRENT DIRECTORY IS: "+current_directory)
             # check if the current directory is not transformations folder (if it were something went wrong and there
             # are no input images)
             if current_directory != "transformations":
@@ -222,8 +245,10 @@ class Controller:
                 copied_folders.append(output_folder_path)
 
         # Get the current directory
+        print(input_folder)
         current_directory = input_folder.split("/transformations/")[0]
         current_directory = os.getcwd() + "/" + current_directory + "/transformations/"
+        print(current_directory)
 
         # ensure no windows double backslash
         current_directory = current_directory.replace("\\", "/")
@@ -254,9 +279,11 @@ class Controller:
                         # Create the folder name
                         folder_name = f"basefolder-{transformed_name}-{number}"
                         folder_path = os.path.join(current_directory, folder_name)
+                        print(folder_path)
 
                         # Move the transformed image to the corresponding folder
                         destination_path = os.path.join(folder_path, transformed_image)
+                        print(destination_path)
                         shutil.move(os.path.join(current_directory, transformed_image), destination_path)
 
         return "True"
@@ -268,25 +295,25 @@ class Controller:
     def exit(self):
         pass
 
-#FRONTEND MODE; noT USED CURRENTLY
+    # FRONTEND MODE; noT USED CURRENTLY
     def save_test_image(self, data_url, container_name):
         self.storage_helper.create_dir(
-            self.storage_helper.get_dockerpath(container_name) + self.environment.get_transformation_folder())
+            self.storage_helper.get_folderpath(container_name) + self.environment.get_transformation_folder())
 
         return self.storage_helper.save_test_image(data_url, container_name)
 
-    def build_docker(self, container_name):
-        tarfile = self.storage_helper.tarfile_handler(container_name)
+    def build_docker(self, container_id):
+        tarfile = self.storage_helper.get_modelpath(container_id)
         self.docker_helper.build_docker(tarfile)
         time.sleep(10)
 
-    def run_tests(self, container_name):
-        dockerpath = self.storage_helper.get_dockerpath(container_name)
-        tarfile = self.storage_helper.tarfile_handler(container_name)
+    def run_tests(self, container_id):
+        environment_folder = self.storage_helper.get_folderpath(container_id)
+        tarfile = self.storage_helper.get_modelpath(container_id)
         image = self.docker_helper.get_image_name(tarfile)
-        winpath = "C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + dockerpath
-        # linuxpath = winpath
+        winpath = os.path.join(os.getcwd(), environment_folder).replace("\\","/")
+        #linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + environment_folder
+        linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
@@ -297,7 +324,7 @@ class Controller:
         except Exception as e:
             return "Something went wrong while testing: " + str(e)
 
-        self.evaluate_results(dockerpath)
+        self.evaluate_results(environment_folder)
 
         return True
 
@@ -306,12 +333,15 @@ class Controller:
         #     print("folder: " + structure)
         #     self.docker_helper.start_container(image, structure, linuxpath + "output/" + os.path.basename(folder))
 
-    def image_exists(self, container_name):
-        # eigentlich hier tarfile path getten über storagehelper.getdockerpath
-        tarfile = self.storage_helper.tarfile_handler(container_name)
+    def image_exists(self, container_id):
+        """
+        Asks Docker_Helper if model for given container already exists
+        :param container_id: the container to check
+        :return: Boolean if the image already exists
+        """
+        print("Container id from frontend: " + str(container_id))
+        tarfile = self.storage_helper.get_modelpath(container_id)
         print("finalpath" + str(tarfile))
-        if not os.path.isfile(tarfile):
-            return "Invalid tarfile"
         return self.docker_helper.is_already_present(tarfile)
 
     def get_stored_transformations(self, transformations):
@@ -333,7 +363,7 @@ class Controller:
         label_counts_2d = [[label, count] for label, count in label_counts.items()]  # Convert to 2D array
         return label_counts_2d, labels
 
-    def add_images(self, container, path):
+    def add_images(self, container, destination_name):
         result = subprocess.run([sys.executable, 'backend_mode.py'], stdout=subprocess.PIPE)
         truths = result.stdout.decode('utf-8').strip()
         if truths is not None and truths != "" and truths != "False":
@@ -341,14 +371,25 @@ class Controller:
         else:
             print("No valid file selected")
             raise FileNotFoundError("No valid file selected")
-        docker=self.storage_helper.get_dockerpath(container)
-        solutiondir=docker+path
-        print("dockerpath")
-        print(solutiondir)
-        self.storage_helper.create_dir(solutiondir)
-        self.storage_helper.extract_tar(truths,solutiondir)
+        environment = self.storage_helper.get_folderpath(container)
 
-    def is_ready_to_run(self,container):
+        destination_dir = os.path.join(environment, destination_name).replace("\\","/")
+        print("destination path")
+        print(destination_dir)
+        self.storage_helper.create_dir(destination_dir)
+        self.storage_helper.extract_tar(truths, destination_dir)
+
+    def user_select_tar(self):
+        filechooser = subprocess.run([sys.executable, 'backend_mode.py'], stdout=subprocess.PIPE)
+        tarfile = filechooser.stdout.decode('utf-8').strip()
+        if tarfile is not None and tarfile != "" and tarfile != "False" and os.path.isfile(tarfile):
+            print(f"Selected tarfile: {tarfile}")
+            return tarfile
+        else:
+            print("No valid file selected")
+            raise FileNotFoundError("No valid file selected")
+
+    def is_ready_to_run(self, container):
         if not self.image_exists(container):
             return "Model not present"
         if not self.storage_helper.testdata_exists(container):
@@ -357,7 +398,3 @@ class Controller:
 
     def delete_docker_container(self, container):
         return self.storage_helper.delete_docker_container(container)
-
-
-
-
