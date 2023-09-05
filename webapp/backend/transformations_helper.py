@@ -12,6 +12,7 @@ from skimage.transform import resize
 from skimage.io import imread
 from PIL import Image, ImageDraw, ImageOps, ImageChops, ImageFilter
 import skimage.io as io
+import cv2
 from skimage.filters import gaussian
 from skimage.transform import rescale
 
@@ -232,17 +233,25 @@ class TransformationsHelper:
 
         return image_with_vignette
 
-    def apply_motion_blur(self, image, radius, angle):
-        if isinstance(image, np.ndarray):
-            image = Image.fromarray(image.astype('uint8')).convert('RGB')
+    def apply_motion_blur(self,image, radius):
+        if radius <= 0:
+            print("Radius must be greater than zero.")
+            return image
 
-        blurred = image.filter(ImageFilter.GaussianBlur(radius=radius))
-        # Implement angle-based motion blur if needed. For now, this only applies Gaussian blur.
+        # Convert PIL image to numpy array if it's not already one
+        if not isinstance(image, np.ndarray):
+            image = np.array(image)
 
-        if isinstance(image, np.ndarray):
-            blurred = np.array(blurred)
+        # Generate the motion blur kernel
+        kernel = np.zeros((radius, radius))
+        kernel[int((radius - 1) // 2), :] = np.ones(radius)
+        kernel = kernel / radius  # normalize the kernel
 
-        return blurred
+        # Apply the kernel to the image
+        blurred = cv2.filter2D(image, -1, kernel)
+
+        # Convert back to PIL Image if needed
+        return Image.fromarray(np.uint8(blurred))
 
 
     def apply_transformations(self, image_path, transformations, output):
@@ -269,7 +278,7 @@ class TransformationsHelper:
             'glare': (0, 10),  # Example values, adjust as needed
             'resolution': (1, 5),
             'vignette': (0.4, 1.2),
-            'motion_blur': (3, 15)
+            'motion_blur': (3, 20)
         }
 
         def apply_transformation(transformation):
@@ -312,7 +321,7 @@ class TransformationsHelper:
                 elif transformation_label == 'vignette':
                     transformed_image = self.add_vignette(transformed_image, mapped_intensity)
                 elif transformation_label == 'motion_blur':
-                    transformed_image = self.apply_motion_blur(transformed_image, int(mapped_intensity), angle=45)
+                    transformed_image = self.apply_motion_blur(transformed_image, int(mapped_intensity))
 
                 transformed_images.append(transformed_image)
                 transformed_image_pil = Image.fromarray(img_as_ubyte(transformed_image))
