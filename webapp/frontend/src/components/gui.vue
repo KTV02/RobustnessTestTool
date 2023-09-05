@@ -278,7 +278,8 @@ export default {
           let metricString = "Metrics not available"
           //check if metrics are available and correct amount of metrics
           if (this.currentMetrics != null && this.currentMetrics.length % this.numberOfMetrics === 0) {
-            metricString = 'Average:' + this.currentMetrics[metricCounter * this.numberOfMetrics] + ' Standard Deviation:' + this.currentMetrics[(metricCounter + 1) * this.numberOfMetrics] + ' Median:' + this.currentMetrics[(metricCounter + 2) * this.numberOfMetrics] + ' IQR:' + this.currentMetrics[(metricCounter + 3) * this.numberOfMetrics]
+            let metricForTransformation=this.currentMetrics[metricCounter * this.numberOfMetrics]
+            metricString = 'Average:' + metricForTransformation + ' Standard Deviation:' + this.currentMetrics[metricForTransformation+1] + ' Median:' + this.currentMetrics[metricForTransformation+2] + ' IQR:' + this.currentMetrics[metricForTransformation+3]
           }
 
           const chartOptions = {
@@ -368,7 +369,7 @@ export default {
       const response = await this.$axios.post('/api/load-container-results', {
         container: container,
       });
-      if (response.status === 200 && (response.data == null || response.data == "False")) {
+      if (response.status === 200 && (response.data == null || response.data === "False")) {
         this.testResultsAvailable = false;
       } else if (response.status === 200 && response.data != null) {
         console.log("response data")
