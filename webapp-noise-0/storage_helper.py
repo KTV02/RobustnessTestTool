@@ -66,7 +66,6 @@ class StorageHelper:
         conn.close()
 
     def create_dir(self, dir_path):
-        dir_path=dir_path.replace("\\","/")
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
             print(f"Directory created: {dir_path}")
@@ -339,16 +338,16 @@ class StorageHelper:
 
     def create_test_environment(self, dockerpath):
         # create test directory
-        self.create_dir(os.path.join(dockerpath,self.environment.get_test_dir()).replace("\\","/"))
+        self.create_dir(dockerpath + self.environment.get_test_dir())
         # get number of transformations
-        transformations = os.path.join(dockerpath,self.environment.get_transformation_folder()).replace("\\","/")
+        transformations = dockerpath + self.environment.get_transformation_folder()
         count = 0
         for item in os.listdir(transformations):
             item_path = os.path.join(transformations, item)
             if os.path.isdir(item_path):
                 count += 1
 
-        base_folder = os.path.join(os.path.join(dockerpath,self.environment.get_test_dir()), "Stage_1").replace("\\","/")
+        base_folder = os.path.join(dockerpath + "/" + self.environment.get_test_dir(), "Stage_1")
         subfolder_1 = "Sigmoid"
         # subfolder_2 = "1"
 

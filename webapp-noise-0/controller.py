@@ -143,12 +143,12 @@ class Controller:
             return ready
 
     def evaluate_results(self, container):
-        results = os.path.join(container, "output/Stage_1/Sigmoid/").replace("\\","/")
-        transformation_folder = os.path.join(container, self.environment.get_transformation_folder()).replace("\\","/")
+        results = container + "output/Stage_1/Sigmoid/"
+        transformation_folder = container + self.environment.get_transformation_folder()
         transformation_array, labels = self.get_stored_transformations(transformation_folder)
         metrics = []
 
-        solutions_path = os.path.join(container,"solutions/").replace("\\","/")
+        solutions_path = container + "solutions/"
 
         # Preallocate the list of arrays
         data3d = []
@@ -302,18 +302,20 @@ class Controller:
 
         return self.storage_helper.save_test_image(data_url, container_name)
 
-    def build_docker(self, container_id):
+    def build_docker(self, container_name):
+        container_id = self.storage_helper.get_folderpath()
         tarfile = self.storage_helper.get_modelpath(container_id)
         self.docker_helper.build_docker(tarfile)
         time.sleep(10)
 
-    def run_tests(self, container_id):
-        environment_folder = self.storage_helper.get_folderpath(container_id)
+    def run_tests(self, container_name):
+        container_id = self.storage_helper.get_folderpath(container_name)
         tarfile = self.storage_helper.get_modelpath(container_id)
         image = self.docker_helper.get_image_name(tarfile)
-        winpath = os.path.join(os.getcwd(), environment_folder).replace("\\","/")
-        #linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + environment_folder
-        linuxpath = winpath
+        wrfkmweff
+        winpath = "C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + container_id
+        linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + container_id
+        # linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
@@ -324,7 +326,7 @@ class Controller:
         except Exception as e:
             return "Something went wrong while testing: " + str(e)
 
-        self.evaluate_results(environment_folder)
+        self.evaluate_results(container_id)
 
         return True
 
