@@ -1,9 +1,0 @@
-noise
-contrast
-brightness
-sharpness
-smoke
-glare
-resolution
-vignette
-motion_blur

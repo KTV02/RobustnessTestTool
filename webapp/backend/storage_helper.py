@@ -395,6 +395,28 @@ class StorageHelper:
         name="results/" + re.sub(r'\W+', '',f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
         filename = os.path.join(container,name).replace("\\","/")
         print(filename)
+
+        mean_metrics=list()
+        #get count of sampling steps for every transformation
+        sampling_counts=list() #1,10
+        for i in range(len(labels)):
+            sampling_counts.append(len(data3d[i]))
+
+        sample_counter=0
+        #for the number of metrics
+        for metric in range(6): #0
+            for i in sampling_counts: #10
+                sum=0
+                for samplepoint in range(i): #0
+                    sum+=metrics[sample_counter][metric]
+                    sample_counter+=1
+                mean_metrics.append(sum/i)
+
+        print(str(mean_metrics))
+
+
+
+
         # Convert the 3D list to a structured NumPy array
         # dt = h5py.special_dtype(vlen=np.dtype('int32'))
         # data_array = np.array([np.array(subarr, dtype=dt) for subarr in data3d])
@@ -403,9 +425,11 @@ class StorageHelper:
         converted_data = json.dumps(data3d)
         converted_labels = json.dumps(labels)
         converted_metrics = json.dumps(metrics)
+        converted_mean_metrics=json.dumps(mean_metrics)
         save = {
             "data": converted_data,
             "metrics": converted_metrics,
+            'mean_metrics': converted_mean_metrics,
             "labels": converted_labels
 
         }
