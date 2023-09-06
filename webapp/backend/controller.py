@@ -35,9 +35,11 @@ class Controller:
 
     # Calculates average etc. of
     def calculateStatisticalMetrics(self, current_transformation):
+        print("Metrics for: " + str(current_transformation))
         if len(current_transformation) > 1:
             # Convert the list to a numpy array
             data_array = np.array(current_transformation)
+            print("Numpy data: " + str(data_array))
 
             # Calculate the mean
             mean = np.mean(data_array)
@@ -59,6 +61,8 @@ class Controller:
 
             # Calculate the sum of all elements
             sum_of_elements = np.sum(data_array)
+            print("All metrics for transformation: " + str(
+                [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]))
             return [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]
         else:
             return None
@@ -151,7 +155,7 @@ class Controller:
         metrics = []
 
         solutions_path = os.path.join(container, "solutions/").replace("\\", "/")
-        print("solutions path: "+str(solutions_path))
+        print("solutions path: " + str(solutions_path))
 
         # Preallocate the list of arrays
         data3d = []
@@ -177,14 +181,17 @@ class Controller:
                 print("Transformation: " + str(transformation_index) + " with sample index: " + str(sample_index))
                 current_transformation_folder = os.path.join(results, str(foldercount))
                 total_images = sum(1 for entry in os.scandir(current_transformation_folder) if entry.is_dir())
-                print("Number of total images is :"+str(total_images))
+                print("Number of total images is :" + str(total_images))
                 for image_index in range(total_images):
                     print("Image Index: " + str(image_index))
                     current_imagefolder = os.path.join(current_transformation_folder, str(image_index)).replace("\\",
                                                                                                                 "/")
                     print("Current Transformations folder to be evaluated:")
                     print(current_imagefolder)
-                    solution_filename = "solution{}.png".format(image_index)
+                    if image_index != 0:
+                        solution_filename = "solution{}.png".format(image_index)
+                    else:
+                        solution_filename = "solution.png"
                     solution_filepath = os.path.join(solutions_path, solution_filename)
                     print("Current solution filepath")
                     print(solution_filepath)
@@ -195,7 +202,7 @@ class Controller:
 
                     if output_folder_exists and solution_file_exists:
                         output_filepath = os.path.join(current_imagefolder, "output.png").replace("\\", "/")
-                        print("output filepath: "+str(output_filepath))
+                        print("output filepath: " + str(output_filepath))
 
                         # Call the eval_image function with the output and solution file paths
                         result = self.eval_helper.eval_image(output_filepath, solution_filepath)
@@ -414,7 +421,7 @@ class Controller:
     def delete_docker_container(self, container):
         return self.storage_helper.delete_docker_container(container)
 
-    def ground_truth_checker(self,container):
-        path=self.storage_helper.get_folderpath(container)
-        solutions_path=os.path.join(path,"solutions/").replace("\\","/")
+    def ground_truth_checker(self, container):
+        path = self.storage_helper.get_folderpath(container)
+        solutions_path = os.path.join(path, "solutions/").replace("\\", "/")
         return self.storage_helper.ground_truth_checker(solutions_path)
