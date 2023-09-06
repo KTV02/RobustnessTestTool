@@ -280,7 +280,7 @@ class TransformationsHelper:
             'sharpness': (1, 10),
             'smoke': (0.2, 1),
             'glare': (0.5, 2),
-            'resolution': (1, 5),
+            'resolution': (1.5, 5),
             'vignette': (0.4, 1.2),
             'motion_blur': (10, 20)
         }
