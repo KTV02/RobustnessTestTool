@@ -1,6 +1,7 @@
 noise
 contrast
 brightness
+darkness
 sharpness
 smoke
 glare

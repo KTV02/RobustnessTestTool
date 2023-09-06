@@ -134,6 +134,9 @@ class TransformationsHelper:
         # Return the result as numpy array
         return result
 
+
+#Inspired by https://github.com/yoyoberenguer/Lens-effect
+#License: https://github.com/yoyoberenguer/Lens-effect/blame/master/LICENSE
     def add_custom_lens_flare(self, image_array, flare_intensity):
         # Convert the NumPy array to a PIL Image
         image_pil = Image.fromarray(image_array)
@@ -270,15 +273,16 @@ class TransformationsHelper:
 
         # Define valid value ranges for each transformation
         valid_ranges = {
-            'noise': (0, 0.5),  # Example values, adjust as needed
-            'contrast': (0.01, 5),  # Example values, adjust as needed
-            'brightness': (0, 10),  # Example values, adjust as needed
-            'sharpness': (0, 20),  # Example values, adjust as needed
-            'smoke': (0, 1),  # Example values, adjust as needed
-            'glare': (0, 10),  # Example values, adjust as needed
+            'noise': (0.01, 0.2),
+            'contrast': (0.5, 2),
+            'brightness': (0.1, 0.9),
+            'darkness': (1.5,5),
+            'sharpness': (1, 10),
+            'smoke': (0.2, 1),
+            'glare': (0.5, 2),
             'resolution': (1, 5),
             'vignette': (0.4, 1.2),
-            'motion_blur': (3, 20)
+            'motion_blur': (10, 20)
         }
 
         def apply_transformation(transformation):
@@ -309,6 +313,8 @@ class TransformationsHelper:
                 elif transformation_label == 'contrast':
                     transformed_image = self.adjust_imagecontrast(transformed_image, mapped_intensity)
                 elif transformation_label == 'brightness':
+                    transformed_image = self.adjust_imagebrightness(transformed_image, mapped_intensity)
+                elif transformation_label == 'darkness':
                     transformed_image = self.adjust_imagebrightness(transformed_image, mapped_intensity)
                 elif transformation_label == 'sharpness':
                     transformed_image = self.adjust_imagesharpness(transformed_image, mapped_intensity)
