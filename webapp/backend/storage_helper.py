@@ -391,9 +391,9 @@ class StorageHelper:
     def store_results(self, container, data3d, labels, metrics):
         print("Saving file")
         # create uniqe filename -> datetime and remove specialcharacters and append path to container
-        self.create_dir(container + "results")
-        filename = container + "results/" + re.sub(r'\W+', '',
-                                                   f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
+        self.create_dir(os.path.join(container,"results/").replace("\\","/"))
+        name="results/" + re.sub(r'\W+', '',f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
+        filename = os.path.join(container,name).replace("\\","/")
         print(filename)
         # Convert the 3D list to a structured NumPy array
         # dt = h5py.special_dtype(vlen=np.dtype('int32'))
@@ -523,3 +523,28 @@ class StorageHelper:
         conn.close()
 
         return True
+
+    def ground_truth_checker(self, path):
+        files = os.listdir(path)
+        image_files = [f for f in files if f.lower().endswith(('.png', '.jpg'))]
+        dirs = [d for d in files if os.path.isdir(os.path.join(path, d))]
+
+        if image_files:
+            print("Ground Truths correctly formattted.")
+            return True
+
+        if len(dirs) != 1:
+            raise SyntaxError("Ground Truths not present or formatted incorrectly")
+
+        inner_path = os.path.join(path, dirs[0])
+        inner_files = os.listdir(inner_path)
+        inner_image_files = [f for f in inner_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+
+        if not inner_image_files:
+            raise SyntaxError("Ground Truths not present or formatted incorrectly")
+
+        for image_file in inner_image_files:
+            shutil.move(os.path.join(inner_path, image_file), os.path.join(path, image_file))
+
+        shutil.rmtree(inner_path)
+        print("Ground truth format repaired")

@@ -56,9 +56,13 @@ def add_docker_container_frontend():
 
 @app.route('/api/set-ground-truth', methods=['PUT'])
 def add_ground_truth():
+    container=request.json.get('container')
     try:
-        controller.add_images(request.json.get('container'), "solutions/")
+        controller.add_images(container, "solutions/")
+        controller.ground_truth_checker(container)
     except FileNotFoundError as error:
+        return str(error)
+    except SyntaxError as error:
         return str(error)
 
     return jsonify("success")
