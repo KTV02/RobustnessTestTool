@@ -86,7 +86,7 @@
               <p>Building Docker &#x2717;</p>
             </div>
             <div v-if="imageAlreadyPresent">
-              <p>Docker Image already present on Server &#x2705;</p>
+              <p>Docker Image already present &#x2705;</p>
             </div>
             <div v-if="isRunningTests">
               <p>Running Tests...</p>
