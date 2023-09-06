@@ -59,11 +59,9 @@ class Controller:
             # Calculate the maximum value
             max_value = np.max(data_array)
 
-            # Calculate the sum of all elements
-            sum_of_elements = np.sum(data_array)
             print("All metrics for transformation: " + str(
-                [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]))
-            return [mean, median, std_deviation, variance, min_value, max_value, sum_of_elements]
+                [mean, median, std_deviation, variance, min_value, max_value]))
+            return [mean, median, std_deviation, variance, min_value, max_value]
         else:
             return None
 
