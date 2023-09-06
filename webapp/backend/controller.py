@@ -123,7 +123,7 @@ class Controller:
         """
         dockerpath = str(self.storage_helper.get_folderpath(container))
         output = dockerpath + self.environment.get_transformation_folder()
-        images = os.path.join(dockerpath,"transformations/").replace("\\","/")
+        images = os.path.join(dockerpath, "transformations/").replace("\\", "/")
         ready = self.is_ready_to_run(container)
         if ready is not None and not isinstance(ready, str) and ready:
             if os.path.isfile(images):
@@ -143,12 +143,15 @@ class Controller:
             return ready
 
     def evaluate_results(self, container):
-        results = os.path.join(container, "output/Stage_1/Sigmoid/").replace("\\","/")
-        transformation_folder = os.path.join(container, self.environment.get_transformation_folder()).replace("\\","/")
+        results = os.path.join(container, "output/Stage_1/Sigmoid/").replace("\\", "/")
+        transformation_folder = os.path.join(container, self.environment.get_transformation_folder()).replace("\\", "/")
         transformation_array, labels = self.get_stored_transformations(transformation_folder)
+        print("Evaluating the following transformations")
+        print(transformation_array)
         metrics = []
 
-        solutions_path = os.path.join(container,"solutions/").replace("\\","/")
+        solutions_path = os.path.join(container, "solutions/").replace("\\", "/")
+        print("solutions path: "+str(solutions_path))
 
         # Preallocate the list of arrays
         data3d = []
@@ -174,14 +177,17 @@ class Controller:
                 print("Transformation: " + str(transformation_index) + " with sample index: " + str(sample_index))
                 current_transformation_folder = os.path.join(results, str(foldercount))
                 total_images = sum(1 for entry in os.scandir(current_transformation_folder) if entry.is_dir())
+                print("Number of total images is :"+str(total_images))
                 for image_index in range(total_images):
                     print("Image Index: " + str(image_index))
                     current_imagefolder = os.path.join(current_transformation_folder, str(image_index)).replace("\\",
                                                                                                                 "/")
+                    print("Current Transformations folder to be evaluated:")
                     print(current_imagefolder)
-                    solution_filename = "solution-{}.png".format(image_index)
+                    solution_filename = "solution{}.png".format(image_index)
                     solution_filepath = os.path.join(solutions_path, solution_filename)
-                    print(solution_filename)
+                    print("Current solution filepath")
+                    print(solution_filepath)
 
                     output_folder_exists = os.path.exists(current_imagefolder)
                     solution_file_exists = os.path.exists(solution_filepath)
@@ -189,10 +195,9 @@ class Controller:
 
                     if output_folder_exists and solution_file_exists:
                         output_filepath = os.path.join(current_imagefolder, "output.png").replace("\\", "/")
+                        print("output filepath: "+str(output_filepath))
 
                         # Call the eval_image function with the output and solution file paths
-                        print(output_filepath)
-                        print(solution_filepath)
                         result = self.eval_helper.eval_image(output_filepath, solution_filepath)
                         print(str(image_index) + " image index with result " + str(result))
                         current_transformation.append(result)
@@ -226,7 +231,7 @@ class Controller:
         elif len(directories) == 0:
             # if no directory is found in input folder, it could be that pwd is already inside the input folder
             current_directory = os.getcwd()
-            print("MY CURRENT DIRECTORY IS: "+current_directory)
+            print("MY CURRENT DIRECTORY IS: " + current_directory)
             # check if the current directory is not transformations folder (if it were something went wrong and there
             # are no input images)
             if current_directory != "transformations":
@@ -248,6 +253,7 @@ class Controller:
         print(input_folder)
         current_directory = input_folder.split("/transformations/")[0]
         current_directory = os.getcwd() + "/" + current_directory + "/transformations/"
+        print("Take a looki looki")
         print(current_directory)
 
         # ensure no windows double backslash
@@ -266,6 +272,7 @@ class Controller:
 
                     # Get the base name and extension of the current image
                     base_name, extension = os.path.splitext(file)
+                    print("Base name: " + base_name)
 
                     # Get the list of transformed images in the current directory
                     transformed_images = [f for f in os.listdir(current_directory) if
@@ -277,13 +284,17 @@ class Controller:
                         number = number.split(".")[0]
 
                         # Create the folder name
-                        folder_name = f"basefolder-{transformed_name}-{number}"
-                        folder_path = os.path.join(current_directory, folder_name)
+                        folder_name = f"{str(directories[0])}-{transformed_name}-{number}"
+                        # CHANGED BECAUSE OF ERROR ON DESKTOP
+                        # folder_path = os.path.join(current_directory, folder_name)
+                        folder_path = folder_name
                         print(folder_path)
 
                         # Move the transformed image to the corresponding folder
                         destination_path = os.path.join(folder_path, transformed_image)
                         print(destination_path)
+                        print(current_directory)
+                        print(transformed_image)
                         shutil.move(os.path.join(current_directory, transformed_image), destination_path)
 
         return "True"
@@ -311,16 +322,20 @@ class Controller:
         environment_folder = self.storage_helper.get_folderpath(container_id)
         tarfile = self.storage_helper.get_modelpath(container_id)
         image = self.docker_helper.get_image_name(tarfile)
-        winpath = os.path.join(os.getcwd(), environment_folder).replace("\\","/")
-        #linuxpath = "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/" + environment_folder
-        linuxpath = winpath
+        winpath = os.path.join(os.getcwd(), environment_folder).replace("\\", "/")
+        linuxpath = os.path.join(
+            "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/",
+            environment_folder).replace("\\", "/")
+        # linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
             return "Something went wrong while creating testing environment " + str(e)
         try:
-            self.docker_helper.start_container(image, linuxpath + self.environment.get_test_dir(),
-                                               linuxpath + "output/")
+            self.docker_helper.start_container(image,
+                                               os.path.join(linuxpath, self.environment.get_test_dir()).replace("\\",
+                                                                                                                "/"),
+                                               os.path.join(linuxpath, "output/").replace("\\", "/"))
         except Exception as e:
             return "Something went wrong while testing: " + str(e)
 
@@ -355,7 +370,7 @@ class Controller:
                     transformation_name = parts[1]
                     print(transformation_name)
                     transformation_names.append(transformation_name)
-                elif len(parts) == 1 and directory == "basefolder":
+                elif len(parts) == 1 and not "-" in str(directory):
                     transformation_names.append("base")
 
         label_counts = Counter(transformation_names)  # Count the occurrences of each label
@@ -373,7 +388,7 @@ class Controller:
             raise FileNotFoundError("No valid file selected")
         environment = self.storage_helper.get_folderpath(container)
 
-        destination_dir = os.path.join(environment, destination_name).replace("\\","/")
+        destination_dir = os.path.join(environment, destination_name).replace("\\", "/")
         print("destination path")
         print(destination_dir)
         self.storage_helper.create_dir(destination_dir)
@@ -398,3 +413,8 @@ class Controller:
 
     def delete_docker_container(self, container):
         return self.storage_helper.delete_docker_container(container)
+
+    def ground_truth_checker(self,container):
+        path=self.storage_helper.get_folderpath(container)
+        solutions_path=os.path.join(path,"solutions/").replace("\\","/")
+        return self.storage_helper.ground_truth_checker(solutions_path)
