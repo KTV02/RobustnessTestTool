@@ -35,9 +35,10 @@
             <h4>Image Formatting Guidelines:</h4>
             <ul>
               <li>Images must be JPG or PNG</li>
-              <li><strong>Format for Images&GroundTruths:</strong> <br> imagename, imagename1,...,imagenameX</li>
+              <li><strong>Format for Images:</strong> <br> raw, raw1,...,rawX</li>
+              <li><strong>Format for GroundTruths:</strong> <br> solution, solution1,...,solutionX</li>
               <li>Images&GroundTruths must be inside their respective .tar folder</li>
-
+              <li>Folder names must not contain "-"</li>
             </ul>
           </div>
           <br>
