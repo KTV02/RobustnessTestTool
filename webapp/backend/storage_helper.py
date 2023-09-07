@@ -388,6 +388,36 @@ class StorageHelper:
 
         print("Folder structure created successfully.")
 
+    def calculate_mean_metrics(self,labels, data3d, metrics):
+        mean_metrics = []
+
+        # Keeps track of the index in metrics list
+        sample_counter = 0
+
+        # Loop over each transformation
+        for i in range(len(labels)):
+
+            # Get the number of intensities for this transformation
+            num_intensities = len(data3d[i])
+
+            # Initialize a list to keep track of the sum of each metric for this transformation
+            sum_metrics = [0] * 6
+
+            # Loop over each intensity for this transformation
+            for j in range(num_intensities):
+
+                # Loop over each metric (0 to 5) and add the values to sum_metrics
+                for metric in range(6):
+                    sum_metrics[metric] += metrics[sample_counter][metric]
+
+                # Move to the next set of metrics in the list
+                sample_counter += 1
+
+            # Compute the mean for each metric and append to mean_metrics
+            mean_metrics.append([x / num_intensities for x in sum_metrics])
+
+        return mean_metrics
+
     def store_results(self, container, data3d, labels, metrics):
         print("Saving file")
         # create uniqe filename -> datetime and remove specialcharacters and append path to container
@@ -396,23 +426,8 @@ class StorageHelper:
         filename = os.path.join(container,name).replace("\\","/")
         print(filename)
 
-        mean_metrics=list()
-        #get count of sampling steps for every transformation
-        sampling_counts=list() #1,10
-        for i in range(len(labels)):
-            sampling_counts.append(len(data3d[i]))
-
-        sample_counter=0
-        #for the number of metrics
-        for metric in range(6): #0
-            for i in sampling_counts: #10
-                sum=0
-                for samplepoint in range(i): #0
-                    sum+=metrics[sample_counter][metric]
-                    sample_counter+=1
-                mean_metrics.append(sum/i)
-
-        print(str(mean_metrics))
+        mean_metrics=self.calculate_mean_metrics(labels, data3d, metrics)
+        print(mean_metrics)
 
 
 
