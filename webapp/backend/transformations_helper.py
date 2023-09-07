@@ -208,31 +208,41 @@ class TransformationsHelper:
 
         return resized_image_array
 
-    def add_vignette(self,image, intensity):
+    def add_vignette(self, image, intensity):
         if isinstance(image, np.ndarray):
-            image = Image.fromarray(image)
+            image = Image.fromarray(image.astype(np.uint8))
 
+        # Extract the image dimensions
         width, height = image.size
 
-        # Create a mask with an elliptical gradient
+        # Create a mask with black background
         mask = Image.new("L", (width, height), 0)
         draw = ImageDraw.Draw(mask)
 
         # Calculate the ellipse parameters
         cx, cy = width // 2, height // 2
-        rx = int(width * intensity / 2)
-        ry = int(height * intensity / 2)
+        rx = int((width // 2) * (1 - intensity))
+        ry = int((height // 2) * (1 - intensity))
 
-        # Draw the elliptical gradient on the mask
+        # Draw the elliptical window on the mask
         draw.ellipse((cx - rx, cy - ry, cx + rx, cy + ry), fill=255)
 
-        # Convert the image and mask to RGBA
+        # Convert the image to RGBA
         image = image.convert("RGBA")
-        mask = mask.convert("L")
 
-        # Apply the mask to the alpha channel of the image
-        image_with_vignette = Image.new("RGBA", (width, height))
-        image_with_vignette.paste(image, (0, 0), mask=mask)
+        # Convert the mask to a numpy array
+        mask_np = np.array(mask) / 255.0
+
+        # Convert the image to a numpy array
+        image_np = np.array(image)
+
+        # Apply the mask
+        image_with_vignette = image_np.copy()
+        for i in range(3):  # Assuming the image is in RGB format
+            image_with_vignette[..., i] = image_np[..., i] * mask_np
+
+        # Convert the numpy array back to an image
+        image_with_vignette = Image.fromarray(np.uint8(image_with_vignette))
 
         return image_with_vignette
 
@@ -281,7 +291,7 @@ class TransformationsHelper:
             'smoke': (0.2, 1),
             'glare': (0.5, 2),
             'resolution': (1.5, 5),
-            'vignette': (0.4, 1.2),
+            'vignette': (0, 0.4),
             'motion_blur': (10, 20)
         }
 
