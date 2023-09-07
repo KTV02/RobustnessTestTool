@@ -149,10 +149,11 @@ export default {
       imageAlreadyPresent: false,
       checkingImage: false,
       currentTransformations: [],
-      numberOfMetrics: 4,
+      numberOfMetrics: 6,
       currentLabels: [],
       currentCharts: [],
       currentMetrics: [],
+      currentMeanMetrics: []
     };
   },
   created() {
@@ -256,14 +257,22 @@ export default {
       }
     },
     plotData() {
-      //this.currentTransformations=Array.from(this.currentTransformations)
-      console.log(this.currentTransformations)
-      console.log(typeof this.currentTransformations)
-      let metricCounter = 0
+      let metricStartIndex = 0; // Initialize index for slicing this.currentMetrics
       this.currentTransformations.forEach((transformation, index) => {
-        let values = transformation.map(subArray => subArray[0]);
+        let numSamplingSteps = transformation.length; // Number of sampling steps for this transformation
+        let values = []; // Initialize the values array for the current transformation
+
+        for (let i = 0; i < numSamplingSteps; i++) {
+          // Take the [0] element from each relevant subarray in this.currentMetrics
+          values.push(this.currentMetrics[metricStartIndex + i][0]);
+        }
+
+        // Increment the index for the next transformation
+        metricStartIndex += numSamplingSteps;
+
+        // Now you can plot these 'values' using your existing code
         let steps = Array.from({length: values.length + 1}, (_, index) => index);
-        if (this.currentLabels[index] != "base") {
+        if (this.currentLabels[index] !== "base") {
           const chartData = {
             labels: steps,
             datasets: [
@@ -276,11 +285,17 @@ export default {
               },
             ],
           };
-          let metricString = "Metrics not available"
-          //check if metrics are available and correct amount of metrics
-          if (this.currentMetrics != null && this.currentMetrics.length % this.numberOfMetrics === 0) {
-            let metricForTransformation=this.currentMetrics[metricCounter * this.numberOfMetrics]
-            metricString = 'Average:' + metricForTransformation + ' Standard Deviation:' + this.currentMetrics[metricForTransformation+1] + ' Median:' + this.currentMetrics[metricForTransformation+2] + ' IQR:' + this.currentMetrics[metricForTransformation+3]
+
+          let meanMetricString = "Metrics not available";
+          if (this.currentMeanMetrics != null && (this.currentMeanMetrics.length % this.numberOfMetrics) === 0) {
+            let startOfTransformationMetrics=metricStartIndex*this.numberOfMetrics
+            let average = this.currentMeanMetrics[startOfTransformationMetrics]; // Adjust as necessary
+            let median=this.currentMeanMetrics[startOfTransformationMetrics+1];
+            let standardDeviation=this.currentMeanMetrics[startOfTransformationMetrics+2];
+            let variance=this.currentMeanMetrics[startOfTransformationMetrics+3];
+            let min=this.currentMeanMetrics[startOfTransformationMetrics+4];
+            let max=this.currentMeanMetrics[startOfTransformationMetrics+5];
+            meanMetricString = 'Mean:' + average + ' Median:' + median + ' Standard Deviation:' + standardDeviation + ' Variance:' + variance+ ' Minimum: '+min+" Maximum: "+max;
           }
 
           const chartOptions = {
@@ -288,21 +303,20 @@ export default {
             plugins: {
               subtitle: {
                 display: true,
-                text: metricString
-              }
-            }
+                text: meanMetricString,
+              },
+            },
           };
-          console.log(`chart-${this.currentLabels[index]}`)
+
           this.$nextTick(() => {
             const cc = new Chart(`chart-${this.currentLabels[index]}`, {
-              type: 'line', // You can choose the chart type based on your requirement
+              type: 'line',
               data: chartData,
               options: chartOptions,
             });
-            this.currentCharts.push(cc)
+            this.currentCharts.push(cc);
           });
         }
-        metricCounter++
       });
     },
     async loadTransformationLabels() {
@@ -378,6 +392,7 @@ export default {
         this.currentTransformations = JSON.parse(response.data["data"]);
         this.currentLabels = JSON.parse(response.data["labels"])
         this.currentMetrics = JSON.parse(response.data["metrics"])
+        this.currentMeanMetrics = JSON.parse(response.data["mean_metrics"])
         console.log(this.currentLabels)
         console.log(typeof this.currentLabels)
         this.testResultsAvailable = true;
@@ -482,10 +497,10 @@ export default {
           // Ask the user for the container name
           const containerName = prompt('Enter the name for the Docker container');
           if (!containerName) return;
-          console.log("The entered container name is: "+containerName)
+          console.log("The entered container name is: " + containerName)
           // Send the FormData object to the server using Axios
-          const response = await this.$axios.put('/api/add-docker-container',{
-                name: containerName,
+          const response = await this.$axios.put('/api/add-docker-container', {
+            name: containerName,
           });
           // Handle the response
 
