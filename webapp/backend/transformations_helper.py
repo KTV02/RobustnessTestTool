@@ -134,9 +134,8 @@ class TransformationsHelper:
         # Return the result as numpy array
         return result
 
-
-#Inspired by https://github.com/yoyoberenguer/Lens-effect
-#License: https://github.com/yoyoberenguer/Lens-effect/blame/master/LICENSE
+    # Inspired by https://github.com/yoyoberenguer/Lens-effect
+    # License: https://github.com/yoyoberenguer/Lens-effect/blame/master/LICENSE
     def add_custom_lens_flare(self, image_array, flare_intensity):
         # Convert the NumPy array to a PIL Image
         image_pil = Image.fromarray(image_array)
@@ -195,6 +194,8 @@ class TransformationsHelper:
         if isinstance(image, np.ndarray):
             image = Image.fromarray(image)
 
+        # Store the original dimensions
+        original_width, original_height = image.size
         # Calculate the new dimensions based on the resolution factor
         width, height = image.size
         new_width = int(width / factor)
@@ -202,11 +203,13 @@ class TransformationsHelper:
 
         # Resize the image to the lower resolution
         resized_image = image.resize((new_width, new_height), resample=Image.BILINEAR)
+        # Resize the image back to its original dimensions
+        restored_image = resized_image.resize((original_width, original_height), resample=Image.BILINEAR)
 
-        # Convert the resized image back to a NumPy array
-        resized_image_array = np.array(resized_image)
+        # Convert the restored image back to a NumPy array
+        restored_image_array = np.array(restored_image)
 
-        return resized_image_array
+        return restored_image_array
 
     def add_vignette(self, image, intensity):
         if isinstance(image, np.ndarray):
@@ -246,7 +249,7 @@ class TransformationsHelper:
 
         return image_with_vignette
 
-    def apply_motion_blur(self,image, radius):
+    def apply_motion_blur(self, image, radius):
         if radius <= 0:
             print("Radius must be greater than zero.")
             return image
@@ -265,7 +268,6 @@ class TransformationsHelper:
 
         # Convert back to PIL Image if needed
         return Image.fromarray(np.uint8(blurred))
-
 
     def apply_transformations(self, image_path, transformations, output):
         print(output)
@@ -286,7 +288,7 @@ class TransformationsHelper:
             'noise': (0.01, 0.2),
             'contrast': (0.5, 2),
             'brightness': (0.1, 0.9),
-            'darkness': (1.5,5),
+            'darkness': (1.5, 5),
             'sharpness': (1, 10),
             'smoke': (0.2, 1),
             'glare': (0.5, 2),
