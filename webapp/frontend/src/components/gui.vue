@@ -277,7 +277,7 @@ export default {
             labels: steps,
             datasets: [
               {
-                label: 'Data',
+                label: 'Mean Accuracy',
                 data: values,
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderColor: 'rgba(75, 0, 192, 1)',
@@ -287,15 +287,15 @@ export default {
           };
 
           let meanMetricString = "Metrics not available";
-          if (this.currentMeanMetrics != null && (this.currentMeanMetrics.length % this.numberOfMetrics) === 0) {
-            let startOfTransformationMetrics=metricStartIndex*this.numberOfMetrics
-            let average = this.currentMeanMetrics[startOfTransformationMetrics]; // Adjust as necessary
-            let median=this.currentMeanMetrics[startOfTransformationMetrics+1];
-            let standardDeviation=this.currentMeanMetrics[startOfTransformationMetrics+2];
-            let variance=this.currentMeanMetrics[startOfTransformationMetrics+3];
-            let min=this.currentMeanMetrics[startOfTransformationMetrics+4];
-            let max=this.currentMeanMetrics[startOfTransformationMetrics+5];
-            meanMetricString = 'Mean:' + average + ' Median:' + median + ' Standard Deviation:' + standardDeviation + ' Variance:' + variance+ ' Minimum: '+min+" Maximum: "+max;
+          if (this.currentMeanMetrics != null) {
+            let startOfTransformationMetrics = metricStartIndex * this.numberOfMetrics
+            let average = this.currentMeanMetrics[1][0]; // Adjust as necessary
+            let median = this.currentMeanMetrics[1][1];
+            let standardDeviation = this.currentMeanMetrics[1][2];
+            let variance = this.currentMeanMetrics[1][3];
+            let min = this.currentMeanMetrics[1][4];
+            let max = this.currentMeanMetrics[1][5];
+            meanMetricString = 'Mean:' + average.toFixed(2) + ' Median:' + median.toFixed(2) + ' Standard Deviation:' + standardDeviation.toFixed(2) +"\n"+ ' Variance:' + variance.toFixed(2) + ' Minimum: ' + min.toFixed(2) + " Maximum: " + max.toFixed(2);
           }
 
           const chartOptions = {
@@ -304,6 +304,9 @@ export default {
               subtitle: {
                 display: true,
                 text: meanMetricString,
+                font: {
+                  size: 10  // Increase this value for a larger subtitle
+                }
               },
             },
           };
@@ -395,6 +398,8 @@ export default {
         this.currentMeanMetrics = JSON.parse(response.data["mean_metrics"])
         console.log(this.currentLabels)
         console.log(typeof this.currentLabels)
+        console.log("This current mean metrics:")
+        console.log(this.currentMeanMetrics)
         this.testResultsAvailable = true;
         this.plotData()
       } else {
