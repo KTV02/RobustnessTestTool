@@ -100,7 +100,7 @@ class DockerHelper:
 
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
-        image_name="fabianicustom"
+        image_name="fabianione"
         cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
         print(cmd)
 

@@ -271,7 +271,7 @@ export default {
         metricStartIndex += numSamplingSteps;
 
         // Now you can plot these 'values' using your existing code
-        let steps = Array.from({length: values.length + 1}, (_, index) => index);
+        let steps = Array.from({length: values.length }, (_, index) => index+1);
         if (this.currentLabels[index] !== "base") {
           const chartData = {
             labels: steps,
