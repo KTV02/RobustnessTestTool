@@ -15,28 +15,13 @@ class DockerHelper:
     def __init__(self):
 
         self.client = docker.from_env()
-        # self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
         for image in self.client.images.list():
             print(str(image.tags))
         print(str(self.client.images.list))
-        image_exists = any("fabianisensee:robustmis" in image.tags for image in self.client.images.list())
-        print(str(image_exists))
 
         current_directory = os.getcwd()
         print(current_directory)
-        #self.start_container("fabianisensee:robustmis", "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/dataset/test",  "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/dataset/output")
 
-        # client = docker.DockerClient(base_url='unix://var/run/docker.sock')
-        # aversion_info = self.client.version()
-
-        # print(version_info)
-        # cmd = f"python --version"
-        # result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        # output = result.stdout
-        # print(output)
-        # self.client = docker.DockerClient(base_url='unix:///var/run/docker.sock')
-        # self.client= ""
-        # self.check_image_exists("fabianisensee")
 
     def check_image_exists(self, image_name):
         base_url = 'http://172.20.11.8:2375'
@@ -100,7 +85,6 @@ class DockerHelper:
 
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
-        image_name="fabianicustom"
         cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
         print(cmd)
 
@@ -124,10 +108,6 @@ class DockerHelper:
             print("Error: Command failed with a non-zero exit code.")
 
 
-
-        #result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        #output = result.stdout
-        #print("Result: " + str(result) + " Output: " + str(output))
 
     def build_docker(self, imagetar):
         print("building docker")

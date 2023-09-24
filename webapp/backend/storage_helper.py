@@ -248,13 +248,6 @@ class StorageHelper:
                 return "Encoding not supported: " + encoding
         return filename
 
-    # def get_folder_paths(self, directory):
-    #     folder_paths = []
-    #     for item in os.listdir(directory):
-    #         item_path = os.path.join(directory, item)
-    #         if os.path.isdir(item_path):
-    #             folder_paths.append(item_path)
-    #     return folder_paths
 
     # can handle txt file and tar file
     def tarfile_handler_frontend(self, container):
