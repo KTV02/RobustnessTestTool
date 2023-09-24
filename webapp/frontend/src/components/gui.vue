@@ -259,69 +259,111 @@ export default {
     plotData() {
       let metricStartIndex = 0; // Initialize index for slicing this.currentMetrics
       this.currentTransformations.forEach((transformation, index) => {
-        let numSamplingSteps = transformation.length; // Number of sampling steps for this transformation
-        let values = []; // Initialize the values array for the current transformation
+            let numSamplingSteps = transformation.length; // Number of sampling steps for this transformation
+            let values = []; // Initialize the values array for the current transformation
 
-        for (let i = 0; i < numSamplingSteps; i++) {
-          // Take the [0] element from each relevant subarray in this.currentMetrics
-          values.push(this.currentMetrics[metricStartIndex + i][0]);
-        }
+            for (let i = 0; i < numSamplingSteps; i++) {
+              // Take the [0] element from each relevant subarray in this.currentMetrics
+              values.push(this.currentMetrics[metricStartIndex + i][0]);
+            }
 
-        // Increment the index for the next transformation
-        metricStartIndex += numSamplingSteps;
+            // Increment the index for the next transformation
+            metricStartIndex += numSamplingSteps;
 
-        // Now you can plot these 'values' using your existing code
-        let steps = Array.from({length: values.length }, (_, index) => index+1);
-        if (this.currentLabels[index] !== "base") {
-          const chartData = {
-            labels: steps,
-            datasets: [
-              {
-                label: 'Mean Accuracy',
-                data: values,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 0, 192, 1)',
-                borderWidth: 1,
-              },
-            ],
-          };
+            // Now you can plot these 'values' using your existing code
+            let steps = Array.from({length: values.length}, (_, index) => index + 1);
+            if (this.currentLabels[index] !== "base") {
+              const chartData = {
+                labels: steps,
+                datasets: [
+                  {
+                    label: 'Mean Accuracy',
+                    data: values,
+                    backgroundColor: 'rgb(0,0,0)',
+                    borderColor: 'rgb(192,0,6)',
+                    borderWidth: 2,
+                  },
+                ],
+              };
 
-          let meanMetricString = "Metrics not available";
-          if (this.currentMeanMetrics != null) {
-            let startOfTransformationMetrics = metricStartIndex * this.numberOfMetrics
-            let average = this.currentMeanMetrics[1][0]; // Adjust as necessary
-            let median = this.currentMeanMetrics[1][1];
-            let standardDeviation = this.currentMeanMetrics[1][2];
-            let variance = this.currentMeanMetrics[1][3];
-            let min = this.currentMeanMetrics[1][4];
-            let max = this.currentMeanMetrics[1][5];
-            meanMetricString = 'Mean:' + average.toFixed(2) + ' Median:' + median.toFixed(2) + ' Standard Deviation:' + standardDeviation.toFixed(2) +"\n"+ ' Variance:' + variance.toFixed(2) + ' Minimum: ' + min.toFixed(2) + " Maximum: " + max.toFixed(2);
+              let meanMetricString = "Metrics not available";
+              if (this.currentMeanMetrics != null) {
+                let startOfTransformationMetrics = metricStartIndex * this.numberOfMetrics
+                let average = this.currentMeanMetrics[1][0]; // Adjust as necessary
+                let median = this.currentMeanMetrics[1][1];
+                let standardDeviation = this.currentMeanMetrics[1][2];
+                let variance = this.currentMeanMetrics[1][3];
+                let min = this.currentMeanMetrics[1][4];
+                let max = this.currentMeanMetrics[1][5];
+                meanMetricString = 'Mean:' + average.toFixed(2) + ' Median:' + median.toFixed(2) + ' Standard Deviation:' + standardDeviation.toFixed(2) + "\n" + ' Variance:' + variance.toFixed(2) + ' Minimum: ' + min.toFixed(2) + " Maximum: " + max.toFixed(2);
+              }
+
+              const chartOptions = {
+                responsive: true,
+                scales: {
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Sampling Steps',
+                      color: '#ffffff'
+                    },
+                    ticks: {
+                      color: '#ffffff'  // Green color
+                    },
+                    grid: {
+                      color: '#ffffff'  // White grid lines
+                    }
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: 'Accuracy',
+                      color: '#ffffff'
+                    },
+                    ticks: {
+                      color: '#ffffff'  // Green color
+                    },
+                    grid: {
+                      color: '#ffffff'  // White grid lines
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      color: '#ffffff'  // Set this to the color you want for the label
+                    }
+                  },
+                  subtitle: {
+                    display: true,
+                    text: meanMetricString,
+                    color: '#ffffff',
+                    font: {
+                      size: 10  // Increase this value for a larger subtitle
+                    }
+                  },
+                },
+                elements: {
+                  point: {
+                    radius: 4,
+                  }
+                },
+              };
+
+              this.$nextTick(() => {
+                const cc = new Chart(`chart-${this.currentLabels[index]}`, {
+                  type: 'line',
+                  data: chartData,
+                  options: chartOptions,
+                });
+                this.currentCharts.push(cc);
+              });
+            }
           }
-
-          const chartOptions = {
-            responsive: true,
-            plugins: {
-              subtitle: {
-                display: true,
-                text: meanMetricString,
-                font: {
-                  size: 10  // Increase this value for a larger subtitle
-                }
-              },
-            },
-          };
-
-          this.$nextTick(() => {
-            const cc = new Chart(`chart-${this.currentLabels[index]}`, {
-              type: 'line',
-              data: chartData,
-              options: chartOptions,
-            });
-            this.currentCharts.push(cc);
-          });
-        }
-      });
-    },
+      )
+      ;
+    }
+    ,
     async loadTransformationLabels() {
       try {
         const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
@@ -742,6 +784,10 @@ input[type="checkbox"] {
 .delete-docker-button.disabled {
   background-color: #cccccc;
   cursor: not-allowed;
+}
+
+h3 {
+  color: #ffffff;  /* Replace with the color code of your choice */
 }
 
 
