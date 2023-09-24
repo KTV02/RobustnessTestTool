@@ -56,6 +56,12 @@ class DockerHelper:
             return False
 
     def get_image_name(self, tarfilepath):
+        """
+        Checks the name of a docker container with a segmentation model
+        :param tarfilepath: the path to the tar file containing the model
+        :return: the name of the docker container inside the tar file
+        """
+
         # Open the tar file in read mode
         print(tarfilepath)
         with tarfile.open(tarfilepath, 'r') as tar:
@@ -94,6 +100,7 @@ class DockerHelper:
 
     def start_container(self, image_name, input_dir, output_dir):
         # Start a Docker container from the image
+        image_name="fabianicustom"
         cmd = f"sudo docker run --gpus 1 --runtime nvidia --ipc=host -v {input_dir}:/input -v {output_dir}:/output {image_name} /usr/local/bin/run_network.sh"
         print(cmd)
 

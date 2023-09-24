@@ -1,8 +1,10 @@
 noise
 contrast
 brightness
+darkness
 sharpness
 smoke
 glare
 resolution
 vignette
+motion_blur

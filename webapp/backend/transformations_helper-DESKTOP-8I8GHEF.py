@@ -134,8 +134,9 @@ class TransformationsHelper:
         # Return the result as numpy array
         return result
 
-    # Inspired by https://github.com/yoyoberenguer/Lens-effect
-    # License: https://github.com/yoyoberenguer/Lens-effect/blame/master/LICENSE
+
+#Inspired by https://github.com/yoyoberenguer/Lens-effect
+#License: https://github.com/yoyoberenguer/Lens-effect/blame/master/LICENSE
     def add_custom_lens_flare(self, image_array, flare_intensity):
         # Convert the NumPy array to a PIL Image
         image_pil = Image.fromarray(image_array)
@@ -249,7 +250,7 @@ class TransformationsHelper:
 
         return image_with_vignette
 
-    def apply_motion_blur(self, image, radius):
+    def apply_motion_blur(self,image, radius):
         if radius <= 0:
             print("Radius must be greater than zero.")
             return image
@@ -268,6 +269,7 @@ class TransformationsHelper:
 
         # Convert back to PIL Image if needed
         return Image.fromarray(np.uint8(blurred))
+
 
     def apply_transformations(self, image_path, transformations, output):
         print(output)
@@ -288,12 +290,12 @@ class TransformationsHelper:
             'noise': (0.01, 0.2),
             'contrast': (0.5, 2),
             'brightness': (0.1, 0.9),
-            'darkness': (1.5, 5),
+            'darkness': (1.5,5),
             'sharpness': (1, 10),
             'smoke': (0.2, 1),
             'glare': (0.5, 2),
             'resolution': (1.5, 5),
-            'vignette': (0, 0.4),
+            'vignette': (0.05, 0.4),
             'motion_blur': (10, 20)
         }
 

@@ -7,6 +7,7 @@ import sqlite3
 import os
 import datetime
 import tarfile
+from PIL import Image
 
 import h5py
 import numpy as np
@@ -32,7 +33,7 @@ class StorageHelper:
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         c.execute('''CREATE TABLE IF NOT EXISTS docker_containers
-                     (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT, path TEXT, date_added TEXT, size INTEGER)''')
+                     (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT, path TEXT,modelpath TEXT, date_added TEXT, size INTEGER)''')
         conn.commit()
         conn.close()
 
@@ -55,7 +56,7 @@ class StorageHelper:
                     date TEXT,
                     score DOUBLE,
                     resultfile TEXT,
-                    FOREIGN KEY (dockerid) REFERENCES docker_containers(id)
+                    FOREIGN KEY (dockerid) REFERENCES docker_containers(id) ON DELETE CASCADE
                 )
                 '''
         # Execute the query
@@ -65,6 +66,7 @@ class StorageHelper:
         conn.close()
 
     def create_dir(self, dir_path):
+        dir_path=dir_path.replace("\\","/")
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
             print(f"Directory created: {dir_path}")
@@ -80,14 +82,14 @@ class StorageHelper:
 
         return results
 
-    def save_docker_container(self, extract_path, name, size):
+    def save_docker_container(self, extract_path, dockerpath, name, size):
         # Save data to the SQLite database
         try:
             conn = sqlite3.connect(self.environment.get_database_file())
             c = conn.cursor()
             # Null Value muss man übergeben, damit DB sich um ID kümmert
-            c.execute("INSERT INTO docker_containers VALUES (NULL,?, ?, ?, ?)",
-                      (name, extract_path, get_current_datetime(), size))
+            c.execute("INSERT INTO docker_containers VALUES (NULL,?, ?, ?, ?, ?)",
+                      (name, extract_path, dockerpath, get_current_datetime(), size))
             conn.commit()
             conn.close()
             return True, f"Container '{name}' successfully registered"
@@ -105,7 +107,7 @@ class StorageHelper:
         conn.close()
         return result
 
-    def json_2_array(self,path):
+    def json_2_array(self, path):
         # Read the JSON file
         with open(path, 'r') as file:
             json_data = json.load(file)
@@ -114,8 +116,7 @@ class StorageHelper:
         print(json_data)
         return json_data
 
-    def get_dockerpath(self, container_id):
-        print(container_id)
+    def get_folderpath(self, container_id):
         conn = sqlite3.connect(self.environment.get_database_file())
         c = conn.cursor()
         c.execute("SELECT path FROM docker_containers WHERE id =?", (container_id,))
@@ -123,11 +124,11 @@ class StorageHelper:
         if result is None:
             return False
         dockerpath = result[0]
-        print(dockerpath)
+        print("this is the dockerpath " + str(dockerpath))
         if "\\" in dockerpath:
             dockerpath = dockerpath.replace("\\", "/")
         conn.close()
-        return dockerpath
+        return os.path.normpath(dockerpath)
 
     def get_result_score(self, dockerid):
         conn = sqlite3.connect(self.environment.get_database_file())
@@ -146,24 +147,44 @@ class StorageHelper:
         columns = [column[1] for column in cursor.fetchall()]
         return columns
 
-    def store_docker(self, tar_url):
+    def store_docker(self, tar_file):
+        """
+        Creates folder for model and registers in database
+        :param tar_file: The path to the model inside a tar file
+        :return: Error Message or Success message with path and filesize of model
+        """
+
+        if tar_file:
+            if self.is_tar_file(tar_file):
+                unique_name = self.generate_unique_name()
+                imagefolder_path = os.path.join(self.environment.get_images_folder(), unique_name).replace("\\", "/")
+                self.create_dir(imagefolder_path)
+                return True, "Tar file saved successfully!", imagefolder_path, tar_file
+            else:
+                return False, "No .tar file detected", False, False
+
+    def store_docker_frontend(self, tar_url):
+        """
+        Creates folder for model,stores tar there and registers in database
+        :param tar_url: the url from the frontend to the tar file
+        :return: Error Message or Success message with path and filesize of model
+        """
         unique_name = self.generate_unique_name()
         extract_path = os.path.join(self.environment.get_images_folder(), unique_name).replace("\\", "/")
         self.create_dir(extract_path)
         extract_path = extract_path + "/"
 
-        tar = self.save_tar_file(tar_url, extract_path)
-        if tar:
-            # EIGENTLICH CHECKEN OB TARFILE:::: TEMP
-            # if self.is_tar_file(tar):
-            if True:
-                # size = os.path.getsize(tar)
-                size = 1
-                return True, "Tar file saved successfully", extract_path, size
+        tar = self.save_tar_file_from_frontend(tar_url, extract_path)
+        if os.path.isfile(tar):
+            if self.is_tar_file(tar):
+                size = os.path.getsize(tar)
+                return True, "Tar file saved successfully!", extract_path, size
             else:
                 return False, "No .tar file detected", False, False
+        else:
+            raise SystemError(tar)
 
-    def save_tar_file(self, file, path):
+    def save_tar_file_from_frontend(self, file, path):
 
         print("strurl" + str(file))
 
@@ -172,47 +193,15 @@ class StorageHelper:
         _, extension = os.path.splitext(filename)
         file_type = extension.lower()[1:]  # Remove the leading dot
 
-        if file_type == "txt":
-            tarpath = path + "tarfile.txt"
-            file.save(tarpath)
-            return str(tarpath) + " saved to " + str(tarpath)
-        elif file_type == "tar":
+        if file_type == "tar":
             tarpath = path + "tarfile.tar"
             file.save(tarpath)
-            return str(tarpath) + " saved to " + str(tarpath)
+            return tarpath
         else:
             return "Filetype not compatible"
-        # Eigentlich wird tarfile auf server gespeichert TEMPORÄR HIER AUSKOMMENTIERT
-        # file.save(tarpath)
-
-        # # Extract the file type and data from the data URL
-        # match = re.search(r'^data:(.*?);(.*?),(.*)$', url)
-        # mime_type = match.group(1)
-        # encoding = match.group(2)
-        # data = match.group(3)
-        #
-        # extension = ""
-        # # Determine the file extension based on the MIME type
-        # if mime_type == 'application/x-tar':
-        #     extension = '.tar'
-        # else:
-        #     return "Not a tar file: " + mime_type
-        #
-        # # Generate a unique file name
-        # filename = 'docker' + extension
-        # filename = path + filename
-        # print("endfilename: "+str(filename))
-        #
-        # # Save the file to disk
-        # with open(filename, 'wb') as f:
-        #     if encoding == 'base64':
-        #         f.write(base64.b64decode(data))
-        #     else:
-        #         return "Encoding not supported: " + encoding
-        return tarpath
 
     def save_test_image(self, data_url, container_name):
-        dockerpath = self.get_dockerpath(container_name)
+        dockerpath = str(self.get_folderpath(container_name))
         output = dockerpath + self.environment.get_transformation_folder()
 
         # Extract the file type and data from the data URL
@@ -241,17 +230,10 @@ class StorageHelper:
             type = ".png"
             testimage = name + type
 
+            self.extract_tar(extracted_path, output)
+
             # Verify if the extracted path points to a .tar file
-            if extracted_path.endswith('.tar'):
-                # Extract the contents of the .tar file to a specific folder
-                tar_output_folder = output
-                with tarfile.open(extracted_path, 'r') as tar:
-                    for file in tar.getmembers():
-                        if os.path.basename(file.name).lower().endswith(('.png', '.jpg')):
-                            tar.extract(file, path=tar_output_folder)
-                return tar_output_folder
-            else:
-                return "No path to tar file found in uploaded file: " + str(match)
+            return
         else:
             return "Not a supported Filetype: " + mime_type
 
@@ -266,32 +248,35 @@ class StorageHelper:
                 return "Encoding not supported: " + encoding
         return filename
 
-    def get_folder_paths(self, directory):
-        folder_paths = []
-        for item in os.listdir(directory):
-            item_path = os.path.join(directory, item)
-            if os.path.isdir(item_path):
-                folder_paths.append(item_path)
-        return folder_paths
+    # def get_folder_paths(self, directory):
+    #     folder_paths = []
+    #     for item in os.listdir(directory):
+    #         item_path = os.path.join(directory, item)
+    #         if os.path.isdir(item_path):
+    #             folder_paths.append(item_path)
+    #     return folder_paths
 
     # can handle txt file and tar file
-    def tarfile_handler(self, container):
+    def tarfile_handler_frontend(self, container):
         returnfile = ""
 
-        path = self.get_dockerpath(container)
-        txtpath = path + "tarfile.txt"
-        tarpath = path + "tarfile.tar"
+        path = self.get_folderpath(container)
+        txtpath = os.path.join(path, "tarfile.txt")
+        print("Model reference path:")
+        destination_tar = ""
         if os.path.isfile(txtpath):
             with open(txtpath, 'r') as txt_file:
                 # Read the first line
                 destination_tar = txt_file.readline().strip()
+        else:
+            raise FileNotFoundError("Model location reference corrupted")
 
-            # Check if is a valid filepath
-            print("destoe:" + str(destination_tar))
-            if os.path.isfile(destination_tar) and destination_tar.endswith('.tar'):
-                returnfile = destination_tar
-        elif os.path.isfile(tarpath):
-            returnfile = tarpath
+        # Check if is a valid filepath
+        if os.path.isfile(destination_tar) and destination_tar.endswith('.tar'):
+            returnfile = destination_tar
+        else:
+            raise FileNotFoundError("Either model does not exist or has been deleted")
+
         return returnfile
 
     # def extract_docker_image(self, file_path):
@@ -306,6 +291,40 @@ class StorageHelper:
     #     except tarfile.TarError as e:
     #         return False, f"Failed to extract Docker image: {str(e)}", None
 
+    def get_modelpath(self, container_id):
+        """
+        Returns the path to the tar file containing the image segmentation model
+        :param container_id: the container id the model belongs to
+        :return: the path to the segmentation model
+        """
+        print(str(container_id))
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        c.execute("SELECT modelpath FROM docker_containers WHERE id =?", (container_id,))
+        result = c.fetchone()
+        if result is None:
+            raise FileNotFoundError("Model location has not been set")
+        modelpath = result[0]
+        if "\\" in modelpath:
+            modelpath = modelpath.replace("\\", "/")
+        conn.close()
+
+        if not os.path.isfile(modelpath) or not modelpath.endswith('.tar'):
+            raise FileNotFoundError("Model location corrupted! Has it been deleted?")
+
+        return modelpath
+
+    # def extract_docker_image(self, file_path):
+    #     # Ordner in den .tar entpackt wird hat einen einzigartigen Namen -> getrennt von Namen des Containers
+    #     unique_name = self.generate_unique_name()
+    #     extract_path = os.path.join(self.environment.get_images_folder(), unique_name)
+    #
+    #     try:
+    #         with tarfile.open(file_path, "r") as tar:
+    #             tar.extractall(extract_path)
+    #         return True, 'f"Docker image extracted to: {extract_path}"', extract_path
+    #     except tarfile.TarError as e:
+    #         return False, f"Failed to extract Docker image: {str(e)}", None
     def is_tar_file(self, file_path):
         return tarfile.is_tarfile(file_path)
 
@@ -320,16 +339,16 @@ class StorageHelper:
 
     def create_test_environment(self, dockerpath):
         # create test directory
-        self.create_dir(dockerpath + self.environment.get_test_dir())
+        self.create_dir(os.path.join(dockerpath,self.environment.get_test_dir()).replace("\\","/"))
         # get number of transformations
-        transformations = dockerpath + self.environment.get_transformation_folder()
+        transformations = os.path.join(dockerpath,self.environment.get_transformation_folder()).replace("\\","/")
         count = 0
         for item in os.listdir(transformations):
             item_path = os.path.join(transformations, item)
             if os.path.isdir(item_path):
                 count += 1
 
-        base_folder = os.path.join(dockerpath + "/" + self.environment.get_test_dir(), "Stage_1")
+        base_folder = os.path.join(os.path.join(dockerpath,self.environment.get_test_dir()), "Stage_1").replace("\\","/")
         subfolder_1 = "Sigmoid"
         # subfolder_2 = "1"
 
@@ -369,23 +388,65 @@ class StorageHelper:
 
         print("Folder structure created successfully.")
 
-    def store_results(self, container, data3d,labels):
+    def calculate_mean_metrics(self,labels, data3d, metrics):
+        mean_metrics = []
+
+        # Keeps track of the index in metrics list
+        sample_counter = 0
+
+        # Loop over each transformation
+        for i in range(len(labels)):
+
+            # Get the number of intensities for this transformation
+            num_intensities = len(data3d[i])
+
+            # Initialize a list to keep track of the sum of each metric for this transformation
+            sum_metrics = [0] * 6
+
+            # Loop over each intensity for this transformation
+            for j in range(num_intensities):
+
+                # Loop over each metric (0 to 5) and add the values to sum_metrics
+                for metric in range(6):
+                    sum_metrics[metric] += metrics[sample_counter][metric]
+
+                # Move to the next set of metrics in the list
+                sample_counter += 1
+
+            # Compute the mean for each metric and append to mean_metrics
+            mean_metrics.append([x / num_intensities for x in sum_metrics])
+
+        return mean_metrics
+
+    def store_results(self, container, data3d, labels, metrics):
         print("Saving file")
         # create uniqe filename -> datetime and remove specialcharacters and append path to container
-        self.create_dir(container + "results")
-        filename = container + "results/" + re.sub(r'\W+', '',
-                                                   f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
+        self.create_dir(os.path.join(container,"results/").replace("\\","/"))
+        name="results/" + re.sub(r'\W+', '',f"data{str(datetime.datetime.now())}") + ".json"  # Specify the filename for your HDF5 file
+        filename = os.path.join(container,name).replace("\\","/")
         print(filename)
+
+        mean_metrics=self.calculate_mean_metrics(labels, data3d, metrics)
+        print(mean_metrics)
+
+
+
+
         # Convert the 3D list to a structured NumPy array
         # dt = h5py.special_dtype(vlen=np.dtype('int32'))
         # data_array = np.array([np.array(subarr, dtype=dt) for subarr in data3d])
 
         # Convert the 3D Python list to a compatible data structure
         converted_data = json.dumps(data3d)
-        converted_labels=json.dumps(labels)
+        converted_labels = json.dumps(labels)
+        converted_metrics = json.dumps(metrics)
+        converted_mean_metrics=json.dumps(mean_metrics)
         save = {
             "data": converted_data,
+            "metrics": converted_metrics,
+            'mean_metrics': converted_mean_metrics,
             "labels": converted_labels
+
         }
         # Save the converted data to a JSON file
         with open(filename, 'w') as file:
@@ -394,9 +455,9 @@ class StorageHelper:
         self.insert_new_result(container, filename)
 
     def insert_new_result(self, container, resultfile):
-        #if full path is passed -> shorten to local path before storing in db
+        # if full path is passed -> shorten to local path before storing in db
         if ":" in resultfile:
-            resultfile=resultfile.split("backend/")[1]
+            resultfile = resultfile.split("backend/")[1]
 
         print("Inserting new Result in " + container)
         path = "images/" + container.split("images/")[1]
@@ -414,3 +475,115 @@ class StorageHelper:
                   (id, datetime.datetime.now(), resultfile))
         conn.commit()
         conn.close()
+
+    def extract_tar(self, extracted_path, output):
+        print(extracted_path)
+        if extracted_path.endswith('.tar'):
+            # Extract the contents of the .tar file to a specific folder
+            tar_output_folder = output
+            with tarfile.open(extracted_path, 'r') as tar:
+                for file in tar.getmembers():
+                    if os.path.basename(file.name).lower().endswith(('.png', '.jpg')):
+                        tar.extract(file, path=tar_output_folder)
+            return tar_output_folder
+        else:
+            return "No path to tar file found"
+
+    def testdata_exists(self, container):
+        containerpath = str(self.get_folderpath(container))
+        testimages = self.has_images(containerpath + "transformations/")
+        groundtruths = self.has_images(containerpath + "solutions/")
+        if isinstance(testimages, str) or isinstance(groundtruths, str):
+            return "Error occurred while checking testdata"
+        if testimages is None or not testimages:
+            return "Testimages not present"
+        if groundtruths is None or not groundtruths:
+            return "Ground truths not present"
+        return True
+
+    def has_images(self, folder_path):
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                try:
+                    with Image.open(os.path.join(root, file)) as img:
+                        img.verify()
+                        return True
+                except:
+                    print("error has occured while checking if testdata present")
+        return False
+
+    def container_exists(self, container):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        c.execute("SELECT id FROM docker_containers WHERE id=?", (container,))
+        result = c.fetchone()
+        conn.close()
+        if not result:
+            return False
+        else:
+            return True
+
+    def delete_folder(self, path: str):
+        """
+        Deletes a folder at the given path if it exists.
+        :param path: The path of the folder to delete.
+        """
+        print(os.path.exists(path))
+        if os.path.exists(path) and os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            return False
+
+        if os.path.exists(path) and os.path.isdir(path):
+            return False
+
+        return True
+
+    def delete_docker_container(self, container):
+        conn = sqlite3.connect(self.environment.get_database_file())
+        c = conn.cursor()
+        # check if docker container to be deleted actually exists
+        if not self.container_exists(container):
+            return "Container to be deleted does not exist"
+
+        # deleting container files
+        path = os.path.join(os.getcwd(), str(self.get_folderpath(container)))
+        print("Dockerpath: " + str(path))
+        if not self.delete_folder(path):
+            return "Container files could not be deleted!"
+
+        # deleting docker container from database
+        c.execute("DELETE FROM docker_containers WHERE id =?", (container,))
+        conn.commit()
+        # check if successfull
+        if self.container_exists(container):
+            return "Container could not be deleted from DB!"
+
+        conn.close()
+
+        return True
+
+    def ground_truth_checker(self, path):
+        files = os.listdir(path)
+        image_files = [f for f in files if f.lower().endswith(('.png', '.jpg'))]
+        dirs = [d for d in files if os.path.isdir(os.path.join(path, d))]
+
+        if image_files:
+            print("Ground Truths correctly formattted.")
+            return True
+
+        if len(dirs) != 1:
+            raise SyntaxError("Ground Truths not present or formatted incorrectly")
+
+        inner_path = os.path.join(path, dirs[0])
+        inner_files = os.listdir(inner_path)
+        inner_image_files = [f for f in inner_files if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp'))]
+
+        if not inner_image_files:
+            raise SyntaxError("Ground Truths not present or formatted incorrectly")
+
+        for image_file in inner_image_files:
+            shutil.move(os.path.join(inner_path, image_file), os.path.join(path, image_file))
+
+        shutil.rmtree(inner_path)
+        print("Ground truth format repaired")
