@@ -1,7 +1,7 @@
 # RobustnessTestTool
 
 
-This project is open-source and lays the foundation for a comprehensive application designed to test the robustness of image segmentation algorithms. It is a unique framework allowing testing for any model, given that the model fulfills specific requirements which can be found here: https://www.synapse.org/Portal/filehandle?ownerId=syn18779624&ownerType=ENTITY&fileName=SubmissionInstructions.pdf&preview=false&wikiId=592666. The main objective is to assess the robustness against various interference effects accurately. For detailed insights and extensive information on the methodology and principles underlying this project, please refer to my Bachelor Thesis available here:
+This project is open-source and lays the foundation for a comprehensive application designed to test the robustness of image segmentation algorithms. It is a unique framework allowing testing for any model, given that the model fulfills specific requirements which can be found here: https://www.synapse.org/Portal/filehandle?ownerId=syn18779624&ownerType=ENTITY&fileName=SubmissionInstructions.pdf&preview=false&wikiId=592666. The main objective is to assess the robustness against various interference effects accurately. For detailed insights and extensive information on the methodology and principles underlying this project, please refer to my Bachelor Thesis available here: https://github.com/KTV02/RobustnessTestTool/blob/main/BachelorarbeitLennartKremp.pdf
 
 Requirements & Compatibility
 
