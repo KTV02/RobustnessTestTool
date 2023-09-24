@@ -26,12 +26,7 @@ class Controller:
         self.storage_helper = StorageHelper(self.environment, self.transformations_helper)
         self.docker_helper = DockerHelper()
         self.eval_helper = EvalHelper()
-        # print(self.eval_helper.eval_image("C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/output/0/0/output.png","C:/Users/Lennart Kremp/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/images/image3/solutions/solution-0.png"))
-        # print(self.evaluate_results("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-        #                           "/backend/images/image10/"))
 
-    # self.run_tests("/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp"
-    #  "/backend/images/5/")
 
     # Calculates average etc. of
     def calculateStatisticalMetrics(self, current_transformation):
@@ -236,7 +231,6 @@ class Controller:
         elif len(directories) == 0:
             # if no directory is found in input folder, it could be that pwd is already inside the input folder
             current_directory = os.getcwd()
-            print("MY CURRENT DIRECTORY IS: " + current_directory)
             # check if the current directory is not transformations folder (if it were something went wrong and there
             # are no input images)
             if current_directory != "transformations":
@@ -263,7 +257,6 @@ class Controller:
 
         # ensure no windows double backslash
         current_directory = current_directory.replace("\\", "/")
-        print(current_directory)
 
         # Iterate over the image files in the input_folder
         for root, dirs, files in os.walk(input_folder):
@@ -327,11 +320,9 @@ class Controller:
         environment_folder = self.storage_helper.get_folderpath(container_id)
         tarfile = self.storage_helper.get_modelpath(container_id)
         image = self.docker_helper.get_image_name(tarfile)
-        winpath = os.path.join(os.getcwd(), environment_folder).replace("\\", "/")
-        linuxpath = os.path.join(
-            "/mnt/c/Users/lkrem/OneDrive/Studium/Bachelorarbeit/RobustnessTestTool/webapp/backend/",
+        #NEEDS TO BE THE PATH ON A LINUX DISTRO OR WSL!!
+        linuxpath = os.path.join(os.getcwd(),
             environment_folder).replace("\\", "/")
-        # linuxpath = winpath
         try:
             self.storage_helper.create_test_environment(linuxpath)
         except Exception as e:
