@@ -25,9 +25,23 @@
         <div v-else>
           <div class="no-results">No results for {{ findNameForContainer(selectedContainer) }}. Run the Tests below!
           </div>
-          <label for="fileInput">Choose a Test Image:</label>
-          <input type="file" accept=".png, .jpg, .jpeg, .txt" @change="setTestImage">
+          <button @click="setTestImage">Upload Test Images</button>
+
+          <br>
+          <button @click="setGroundTruth">Upload Ground Truths</button>
           <br><br>
+          <!-- Info Box -->
+          <div class="info-box">
+            <h4>Image Formatting Guidelines:</h4>
+            <ul>
+              <li>Images must be JPG or PNG</li>
+              <li><strong>Format for Images:</strong> <br> raw, raw1,...,rawX</li>
+              <li><strong>Format for GroundTruths:</strong> <br> solution, solution1,...,solutionX</li>
+              <li>Images&GroundTruths must be inside their respective .tar folder</li>
+              <li>Folder names must not contain "-"</li>
+            </ul>
+          </div>
+          <br>
           <div v-if="labels.length > 0">
             <div class="title-container">
               <div class="checkbox-title">Parameters</div>
@@ -48,7 +62,7 @@
               </div>
             </div>
             <button class="run-tests-button"
-                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||testImage===''}"
+                    :class="{ 'disabled': !isRunButtonActive||isTransformingImages||!testImageSet||!groundTruthSet}"
                     @click="runTests">Run Tests
             </button>
             <div v-if="isTransformingImages">
@@ -56,6 +70,9 @@
             </div>
             <div v-if="transformSuccess">
               <p>Transforming Testdata &#x2705;</p>
+            </div>
+            <div v-if="transformFailure">
+              <p>Transforming Testdata &#x2717;</p>
             </div>
             <div v-if="checkingImage">
               <p>Checking if image already present...</p>
@@ -66,8 +83,11 @@
             <div v-if="buildingSuccess">
               <p>Building Docker &#x2705;</p>
             </div>
+            <div v-if="buildingFailure">
+              <p>Building Docker &#x2717;</p>
+            </div>
             <div v-if="imageAlreadyPresent">
-              <p>Docker Image already present on Server &#x2705;</p>
+              <p>Docker Image already present &#x2705;</p>
             </div>
             <div v-if="isRunningTests">
               <p>Running Tests...</p>
@@ -80,13 +100,22 @@
         Run tests to display results
       </div>
     </div>
-    <button class="add-docker-button" @click="openAddDockerDialog">Add Docker Container</button>
+    <div class="button-container">
+      <button class="add-docker-button" :class="{ 'disabled': isTransformingImages||isRunningTests}"
+              @click="openAddDockerDialog">Add Docker Container
+      </button>
+      <button class="delete-docker-button"
+              :class="{ 'disabled': isTransformingImages||isRunningTests||selectedContainer==null}"
+              @click="openDeleteDockerDialog">Delete Container
+      </button>
+    </div>
+
   </div>
 </template>
 
 <script>
 import Loader from 'vue-spinner/src/ClipLoader.vue'
-import { Chart, registerables } from 'chart.js';
+import {Chart, registerables} from 'chart.js';
 
 Chart.register(...registerables);
 
@@ -107,16 +136,24 @@ export default {
       sliderValues: [], // Add sliderValues property
       defaultSliderValue: 1,
       testImage: "",
+      groundTruth: "",
+      testImageSet: false,
+      groundTruthSet: false,
       isRunningTests: false,
       transformSuccess: false,
+      buildingFailure: false,
+      transformFailure: false,
       isBuildingDocker: false,
       buildingSuccess: false,
       tarDataUrl: "",
       imageAlreadyPresent: false,
       checkingImage: false,
       currentTransformations: [],
+      numberOfMetrics: 6,
       currentLabels: [],
-      currentCharts:[],
+      currentCharts: [],
+      currentMetrics: [],
+      currentMeanMetrics: []
     };
   },
   created() {
@@ -125,7 +162,7 @@ export default {
     this.loadTransformationLabels();
   },
   methods: {
-    async setTestImage(event) {
+    async setTestImageFrontend(event) {
       const file = event.target.files[0];
       if (file) {
         // Create a new FileReader instance
@@ -141,46 +178,192 @@ export default {
         // Read the file and convert it to a data URL
         reader.readAsDataURL(file);
       }
+    },
+    async openDeleteDockerDialog() {
+      if (!this.isRunningTests || !this.isTransformingImages || this.selectedContainer != null) {
+        await this.loadDockerContainers()
+
+        const userConfirmed = window.confirm("Really delete this container?");
+
+        if (userConfirmed) {
+          try {
+            console.log(this.selectedContainer)
+            const response = await this.$axios.delete('/api/delete-docker-container', {
+              data: {
+                container: this.selectedContainer,
+              }
+            }); // Update the URL with the correct backend endpoint
+            let success = response.data;
+            console.log(success);
+            if (success == null) {
+              alert("No response from Backend! Operation failed")
+            } else if (success) {
+              this.selectedContainer = null
+              await this.loadDockerContainers()
+              alert("container successfully deleted")
+
+            } else {
+              alert(success)
+            }
+
+            // Perform any other actions you'd like to take upon successful deletion,
+            // such as updating the UI
+          } catch (error) {
+            console.error(error);
+
+            // Perform any other actions you'd like to take upon failure,
+            // such as showing an error message to the user
+          }
+        } else {
+          console.log("User cancelled the deletion.");
+        }
+        // Logic for deleting the Docker container
+      } else {
+        console.log("Delete button deactivated right now! Check conditions")
+      }
     }
     ,
-    plotData() {
-      //this.currentTransformations=Array.from(this.currentTransformations)
-      console.log(this.currentTransformations)
-      console.log(typeof this.currentTransformations)
-
-
-      this.currentTransformations.forEach((transformation, index) => {
-        let values = transformation.map(subArray => subArray[0]);
-        let steps=Array.from({ length: values.length + 1 }, (_, index) => index);
-        if(this.currentLabels[index]!="base") {
-          const chartData = {
-            labels: steps,
-            datasets: [
-              {
-                label: 'Data',
-                data: values,
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 0, 192, 1)',
-                borderWidth: 1,
-              },
-            ],
-          };
-
-          const chartOptions = {
-            responsive: true,
-          };
-          console.log(`chart-${this.currentLabels[index]}`)
-          this.$nextTick(() => {
-            const cc=new Chart(`chart-${this.currentLabels[index]}`, {
-              type: 'line', // You can choose the chart type based on your requirement
-              data: chartData,
-              options: chartOptions,
-            });
-            this.currentCharts.push(cc)
-          });
+    async setTestImage(event) {
+      const container = this.selectedContainer
+      try {
+        const response = await this.$axios.put('/api/set-test-images', {
+          container: container,
+        }); // Update the URL with the correct backend URL
+        let success = response.data;
+        console.log(success)
+        if (success === "success") {
+          this.testImageSet = true
+        } else {
+          alert(success)
         }
-      });
+      } catch (error) {
+        console.error(error);
+      }
     },
+    async setGroundTruth(event) {
+      const container = this.selectedContainer
+      try {
+        const response = await this.$axios.put('/api/set-ground-truth', {
+          container: container,
+        }); // Update the URL with the correct backend URL
+        let success = response.data;
+        if (success === "success") {
+          this.groundTruthSet = true
+        } else {
+          alert(success)
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    },
+    plotData() {
+      let metricStartIndex = 0; // Initialize index for slicing this.currentMetrics
+      this.currentTransformations.forEach((transformation, index) => {
+            let numSamplingSteps = transformation.length; // Number of sampling steps for this transformation
+            let values = []; // Initialize the values array for the current transformation
+
+            for (let i = 0; i < numSamplingSteps; i++) {
+              // Take the [0] element from each relevant subarray in this.currentMetrics
+              values.push(this.currentMetrics[metricStartIndex + i][0]);
+            }
+
+            // Increment the index for the next transformation
+            metricStartIndex += numSamplingSteps;
+
+            // Now you can plot these 'values' using your existing code
+            let steps = Array.from({length: values.length}, (_, index) => index + 1);
+            if (this.currentLabels[index] !== "base") {
+              const chartData = {
+                labels: steps,
+                datasets: [
+                  {
+                    label: 'Mean Accuracy',
+                    data: values,
+                    backgroundColor: 'rgb(0,0,0)',
+                    borderColor: 'rgb(192,0,6)',
+                    borderWidth: 2,
+                  },
+                ],
+              };
+
+              let meanMetricString = "Metrics not available";
+              if (this.currentMeanMetrics != null) {
+                let startOfTransformationMetrics = metricStartIndex * this.numberOfMetrics
+                let average = this.currentMeanMetrics[1][0]; // Adjust as necessary
+                let median = this.currentMeanMetrics[1][1];
+                let standardDeviation = this.currentMeanMetrics[1][2];
+                let variance = this.currentMeanMetrics[1][3];
+                let min = this.currentMeanMetrics[1][4];
+                let max = this.currentMeanMetrics[1][5];
+                meanMetricString = 'Mean:' + average.toFixed(2) + ' Median:' + median.toFixed(2) + ' Standard Deviation:' + standardDeviation.toFixed(2) + "\n" + ' Variance:' + variance.toFixed(2) + ' Minimum: ' + min.toFixed(2) + " Maximum: " + max.toFixed(2);
+              }
+
+              const chartOptions = {
+                responsive: true,
+                scales: {
+                  x: {
+                    title: {
+                      display: true,
+                      text: 'Sampling Steps',
+                      color: '#ffffff'
+                    },
+                    ticks: {
+                      color: '#ffffff'  // Green color
+                    },
+                    grid: {
+                      color: '#ffffff'  // White grid lines
+                    }
+                  },
+                  y: {
+                    title: {
+                      display: true,
+                      text: 'Accuracy',
+                      color: '#ffffff'
+                    },
+                    ticks: {
+                      color: '#ffffff'  // Green color
+                    },
+                    grid: {
+                      color: '#ffffff'  // White grid lines
+                    }
+                  }
+                },
+                plugins: {
+                  legend: {
+                    labels: {
+                      color: '#ffffff'  // Set this to the color you want for the label
+                    }
+                  },
+                  subtitle: {
+                    display: true,
+                    text: meanMetricString,
+                    color: '#ffffff',
+                    font: {
+                      size: 10  // Increase this value for a larger subtitle
+                    }
+                  },
+                },
+                elements: {
+                  point: {
+                    radius: 4,
+                  }
+                },
+              };
+
+              this.$nextTick(() => {
+                const cc = new Chart(`chart-${this.currentLabels[index]}`, {
+                  type: 'line',
+                  data: chartData,
+                  options: chartOptions,
+                });
+                this.currentCharts.push(cc);
+              });
+            }
+          }
+      )
+      ;
+    }
+    ,
     async loadTransformationLabels() {
       try {
         const response = await this.$axios.get('/api/available-transformations'); // Update the URL with the correct backend URL
@@ -213,7 +396,7 @@ export default {
     ,
     async loadDockerContainers() {
       try {
-        const response = await this.$axios.get('/api/docker-containers'); // Update the URL with the correct backend URL
+        const response = await this.$axios.get('/api/get-docker-containers'); // Update the URL with the correct backend URL
         this.dockerList = response.data;
         console.log(this.dockerList)
         this.dockerListLoaded = true; // Set the flag to indicate that the data has been loaded
@@ -223,6 +406,7 @@ export default {
     }
     ,
     selectContainer(container) {
+
       this.selectedContainer = container;
       console.log(this.selectedContainer)
       console.log(document.readyState)
@@ -245,15 +429,19 @@ export default {
       const response = await this.$axios.post('/api/load-container-results', {
         container: container,
       });
-      if (response.status === 200 && (response.data == null || response.data == "False")) {
+      if (response.status === 200 && (response.data == null || response.data === "False")) {
         this.testResultsAvailable = false;
       } else if (response.status === 200 && response.data != null) {
         console.log("response data")
         console.log(response.data)
         this.currentTransformations = JSON.parse(response.data["data"]);
         this.currentLabels = JSON.parse(response.data["labels"])
+        this.currentMetrics = JSON.parse(response.data["metrics"])
+        this.currentMeanMetrics = JSON.parse(response.data["mean_metrics"])
         console.log(this.currentLabels)
         console.log(typeof this.currentLabels)
+        console.log("This current mean metrics:")
+        console.log(this.currentMeanMetrics)
         this.testResultsAvailable = true;
         this.plotData()
       } else {
@@ -264,6 +452,7 @@ export default {
     }
     ,
     async runTests() {
+
       try {
         //This takes the indexes of labels and sliderValues only when the corresponding checkbox is checked
         const transformationArray = this.checkboxes.reduce((result, checkbox, index) => {
@@ -278,13 +467,20 @@ export default {
         //Transform Testimage
         this.isTransformingImages = true;
         const transformResponse = await this.$axios.post('/api/transform-images', {
-          image_path: testImageUrl, // Replace with the actual image path value
           transformations: transformationArray,
           container_name: containerName,
         }); // Update the URL with the correct backend URL and endpoint
         this.isTransformingImages = false;
+
         console.log(transformResponse.status);
         if (transformResponse.status === 200) {
+          let responseContent = transformResponse.data
+          console.log(responseContent)
+          if (responseContent == null || (typeof responseContent === 'string' && String(responseContent) !== 'True') || (typeof responseContent === 'string' && String(responseContent) === 'False')) {
+            alert(String(responseContent))
+            this.transformFailure = true;
+            throw new Error(String(responseContent))
+          }
           this.transformSuccess = true;
 
           this.checkingImage = true;
@@ -296,20 +492,24 @@ export default {
           console.log(image_response)
           if (image_response.data === "False") {
             this.isBuildingDocker = true;
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             const buildResponse = await this.$axios.post('/api/build-docker', {
               container_name: containerName,
             });
             this.isBuildingDocker = false;
-            if (!(buildResponse.status === 200)) {
-              return false
+            let responseContent = transformResponse.data
+            if (responseContent == null || !(buildResponse.status === 200) || typeof responseContent === 'string' || !responseContent) {
+              alert("Error while transforming images")
+              this.transformFailure = true;
+              throw new Error(String(responseContent))
             }
             this.buildingSuccess = true;
+
 
           } else if (image_response.data === "True") {
             this.imageAlreadyPresent = true;
             this.isRunningTests = true;
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
             const testResponse = await this.$axios.post('/api/run-tests', {
               container_name: containerName,
             });
@@ -323,7 +523,7 @@ export default {
             } else {
               alert("An Error occurred while running Tests")
             }
-            await new Promise(resolve => setTimeout(resolve, 5000));
+            await new Promise(resolve => setTimeout(resolve, 3000));
 
           } else {
             alert("An Error occurred while building docker container")
@@ -339,64 +539,99 @@ export default {
     }
     ,
     async openAddDockerDialog() {
-      try {
-        // Open file dialog to select a .tar file
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.tar, .txt';
-        fileInput.addEventListener('change', async () => {
-          const file = fileInput.files[0];
-          if (!file) return;
-
+      if (!this.isRunningTests || !this.isTransformingImages) {
+        try {
           // Ask the user for the container name
           const containerName = prompt('Enter the name for the Docker container');
           if (!containerName) return;
+          console.log("The entered container name is: " + containerName)
+          // Send the FormData object to the server using Axios
+          const response = await this.$axios.put('/api/add-docker-container', {
+            name: containerName,
+          });
+          // Handle the response
 
-          try {
-            // Create a FormData object and append the file to it
-            const formData = new FormData();
+          // Check the response for success and update the dockerList
+          alert(response.data.message)
+          await this.loadDockerContainers();
+        } catch (error) {
+          alert("Adding container failed!")
+          console.error(error);
+        }
 
-            //TEMPORARY
+      } else {
+        console.log("Add Docker Button deactivated right now! Check conditions")
+      }
 
-            formData.append('tarfile', file);
+    }
+    ,
+    async openAddDockerDialogFrontend() {
+      //LEGACY CODE - Frontend MODE
+      if (!this.isRunningTests || !this.isTransformingImages) {
+        try {
 
-            // Append the container name to the FormData object
-            formData.append('container_name', containerName);
-            console.log(formData)
-            // Send the FormData object to the server using Axios
-            const response = await this.$axios.post('/api/add-docker-container', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data',
-              },
-            });
-            // Handle the response
 
-            // Check the response for success and update the dockerList
-            if (response.data.message === 'Docker container added successfully') {
+          // Open file dialog to select a .tar file
+          const fileInput = document.createElement('input');
+          fileInput.type = 'file';
+          fileInput.accept = '.tar, .txt';
+          fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            // Ask the user for the container name
+            const containerName = prompt('Enter the name for the Docker container');
+            if (!containerName) return;
+
+            try {
+              // Create a FormData object and append the file to it
+              const formData = new FormData();
+
+              //TEMPORARY
+
+              formData.append('tarfile', file);
+
+              // Append the container name to the FormData object
+              formData.append('container_name', containerName);
+              console.log(formData)
+              // Send the FormData object to the server using Axios
+              const response = await this.$axios.put('/api/add-docker-container', formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              });
+              // Handle the response
+
+              // Check the response for success and update the dockerList
+              alert(response.data.message)
               await this.loadDockerContainers();
-            } else {
-              console.error(response.data.message);
+            } catch (error) {
+              alert("Adding container failed!")
+              console.error(error);
             }
-          } catch (error) {
-            alert("Adding container failed!")
-            console.error(error);
-          }
-        });
+          });
 
-        // Trigger the file input dialog
-        fileInput.click();
-      } catch (error) {
-        console.error(error);
+          // Trigger the file input dialog
+          fileInput.click();
+        } catch (error) {
+          console.error(error);
+        }
+      } else {
+        console.log("Add Docker Button deactivated right now! Check conditions")
       }
     }
     ,
-  },
+  }
+  ,
   computed: {
     isRunButtonActive() {
       return this.checkboxes.includes(1);
-    },
-  },
-};
+    }
+    ,
+  }
+  ,
+}
+;
 </script>
 <style scoped>
 .docker-item {
@@ -464,17 +699,6 @@ export default {
   cursor: pointer;
 }
 
-.add-docker-button {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 20px;
-  background-color: #007bff;
-  color: #ffffff;
-  border: none;
-  cursor: pointer;
-}
-
 .run-tests-button.disabled {
   background-color: #cccccc;
   cursor: not-allowed;
@@ -526,4 +750,45 @@ input[type="range"] {
 input[type="checkbox"] {
   margin-right: 8px;
 }
+
+.delete-docker-button {
+  background-color: red;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  cursor: pointer;
+}
+
+.add-docker-button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  padding: 10px 20px;
+  margin: 5px;
+}
+
+.button-container {
+  display: inline-block;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+}
+
+.add-docker-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.delete-docker-button.disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+h3 {
+  color: #ffffff;  /* Replace with the color code of your choice */
+}
+
+
 </style>

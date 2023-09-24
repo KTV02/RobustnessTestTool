@@ -4,6 +4,7 @@ import time
 from flask import Flask, jsonify, request
 from flask_cors import CORS  # Import CORS from flask_cors
 from controller import Controller
+import traceback
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes -> to prevent same origin error
@@ -11,32 +12,76 @@ CORS(app)  # Enable CORS for all routes -> to prevent same origin error
 controller = Controller()
 
 
-@app.route('/api/docker-containers', methods=['GET'])
+@app.route('/api/get-docker-containers', methods=['GET'])
 def get_docker_containers():
     docker_list = controller.load_docker_containers()
     return jsonify(docker_list)
 
 
-@app.route('/api/add-docker-container', methods=['POST'])
-def add_docker_container():
-    print("i was here")
-    container_name = request.form['container_name']
-    # TEMPORARY
-    tar_path = request.files['tarfile']
-    # tar_path=""
+@app.route('/api/delete-docker-container', methods=['DELETE'])
+def delete_docker_container():
+    container = request.json.get('container')
+    print("Container to be deleted: " + str(container))
+    success = controller.delete_docker_container(container)
+    return jsonify(success)
 
-    success, message = controller.store_container(tar_path, container_name)
+
+@app.route('/api/add-docker-container', methods=['PUT'])
+def add_docker_container():
+    container_name = request.json.get('name')
+    print("Container name:"+str(container_name))
+    try:
+        success, message,size = controller.store_container(container_name)
+    except FileNotFoundError as e:
+        return jsonify(str(e))
+
     print("Registration: " + message)
     if success:
-        return jsonify({'message': 'Docker container added successfully'})
+        return jsonify({'message': 'Docker container added successfully. Size of model: ' + str(size) + ' bytes'})
     else:
         return jsonify({'message': message}), 400
+
+
+@app.route('/api/add-docker-container-frontend', methods=['PUT'])
+def add_docker_container_frontend():
+    container_name = request.form['container_name']
+    tar_path = request.files['tarfile']
+
+    success, message, size = controller.store_container_frontend(tar_path, container_name)
+    if success:
+        return jsonify({'message': 'Docker container added successfully. Size of model: ' + str(size) + ' bytes'})
+    else:
+        return jsonify({'message': message}), 400
+
+
+@app.route('/api/set-ground-truth', methods=['PUT'])
+def add_ground_truth():
+    container=request.json.get('container')
+    try:
+        controller.add_images(container, "solutions/")
+        controller.ground_truth_checker(container)
+    except FileNotFoundError as error:
+        return str(error)
+    except SyntaxError as error:
+        return str(error)
+
+    return jsonify("success")
+
+
+@app.route('/api/set-test-images', methods=['PUT'])
+def add_test_images():
+    try:
+        controller.add_images(request.json.get('container'), "transformations/")
+    except FileNotFoundError as error:
+        return str(error)
+
+    return jsonify("success")
 
 
 @app.route('/api/load-container-results', methods=['POST'])
 def load_container_results():
     container = request.json.get('container')
-    print("Container selected: "+str(container))
+    print("Container selected: " + str(container))
     result = controller.load_container_results(container)
     print("result is:")
     print(result)
@@ -48,12 +93,12 @@ def transform_images():
     transformations = request.json.get('transformations')
     container_name = request.json.get('container_name')
 
-    data_url = request.json.get('image_path')
-
-    # Save data url to actual file on server
-    image_path = controller.save_test_image(data_url, container_name)
-
-    success = controller.transform_images(container_name, image_path, transformations)
+    try:
+        success = controller.transform_images(container_name, transformations)
+    except OSError as e:
+        print(f"Caught an exception: {e}")
+        traceback.print_exc()
+        return jsonify("An Eception occurred: " + str(e))
 
     return jsonify(str(success))
 
