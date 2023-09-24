@@ -29,6 +29,8 @@ Contributions are what make the open-source community such an incredible place t
 License
 
 This project is open-source and can be used by anyone!
+
+
 Acknowledgments & Credits
 
 This project was developed as part of my Bachelor's thesis. The document is linked above.
