@@ -372,11 +372,4 @@ class TransformationsHelper:
 
         return transformed_images
 
-#
-# transformations_file = "path/to/transformations.txt"
-# image_path = "Assets/website.png"
-# output_path = "C:\\Users\\Lennart Kremp\\OneDrive\\Studium\\Bachelorarbeit\\RobustnessTestTool\\output"
-# #transformations = ["noise","contrast","brightness","sharpness","smoke","glare"]
-# transformations = [["glare",5]]
-# helper = TransformationsHelper(transformations_file)
-# helper.apply_transformations(image_path, transformations, output_path)
+
